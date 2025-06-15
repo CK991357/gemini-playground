@@ -1,10 +1,10 @@
-import { MultimodalLiveClient } from './core/websocket-client.js';
-import { AudioStreamer } from './audio/audio-streamer.js';
 import { AudioRecorder } from './audio/audio-recorder.js';
+import { AudioStreamer } from './audio/audio-streamer.js';
 import { CONFIG } from './config/config.js';
+import { MultimodalLiveClient } from './core/websocket-client.js';
 import { Logger } from './utils/logger.js';
-import { VideoManager } from './video/video-manager.js';
 import { ScreenRecorder } from './video/screen-recorder.js';
+import { VideoManager } from './video/video-manager.js';
 
 /**
  * @fileoverview Main entry point for the application.
@@ -12,7 +12,8 @@ import { ScreenRecorder } from './video/screen-recorder.js';
  */
 
 // DOM Elements
-const logsContainer = document.getElementById('logs-container');
+const logsContainer = document.getElementById('logs-container'); // 用于原始日志输出
+const messageHistory = document.getElementById('message-history'); // 用于聊天消息显示
 const messageInput = document.getElementById('message-input');
 const sendButton = document.getElementById('send-button');
 const micButton = document.getElementById('mic-button');
@@ -30,12 +31,20 @@ const inputAudioVisualizer = document.getElementById('input-audio-visualizer');
 const apiKeyInput = document.getElementById('api-key');
 const voiceSelect = document.getElementById('voice-select');
 const fpsInput = document.getElementById('fps-input');
-const configToggle = document.getElementById('config-toggle');
-const configContainer = document.getElementById('config-container');
+const configToggle = document.getElementById('toggle-config'); // 对应新的 toggle-config 按钮
+const configContainer = document.querySelector('.control-panel'); // 对应新的 control-panel
 const systemInstructionInput = document.getElementById('system-instruction');
 systemInstructionInput.value = CONFIG.SYSTEM_INSTRUCTION.TEXT;
 const applyConfigButton = document.getElementById('apply-config');
 const responseTypeSelect = document.getElementById('response-type-select');
+
+// 新增的 DOM 元素
+const themeToggleBtn = document.getElementById('theme-toggle');
+const toggleLogBtn = document.getElementById('toggle-log');
+const logPanel = document.querySelector('.log-container');
+const clearLogsBtn = document.getElementById('clear-logs');
+const modeTabs = document.querySelectorAll('.mode-tabs .tab');
+const chatContainers = document.querySelectorAll('.chat-container');
 
 // Load saved values from localStorage
 const savedApiKey = localStorage.getItem('gemini_api_key');
@@ -59,15 +68,102 @@ if (savedSystemInstruction) {
     CONFIG.SYSTEM_INSTRUCTION.TEXT = savedSystemInstruction;
 }
 
-// Handle configuration panel toggle
-configToggle.addEventListener('click', () => {
-    configContainer.classList.toggle('active');
-    configToggle.classList.toggle('active');
-});
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. 光暗模式切换逻辑
+    const body = document.body;
+    const savedTheme = localStorage.getItem('theme');
 
-applyConfigButton.addEventListener('click', () => {
-    configContainer.classList.toggle('active');
-    configToggle.classList.toggle('active');
+    if (savedTheme) {
+        body.classList.add(savedTheme);
+        themeToggleBtn.textContent = savedTheme === 'dark-mode' ? 'dark_mode' : 'light_mode';
+    } else {
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            body.classList.add('dark-mode');
+            themeToggleBtn.textContent = 'dark_mode';
+        } else {
+            body.classList.add('light-mode');
+            themeToggleBtn.textContent = 'light_mode';
+        }
+    }
+
+    themeToggleBtn.addEventListener('click', () => {
+        if (body.classList.contains('dark-mode')) {
+            body.classList.remove('dark-mode');
+            body.classList.add('light-mode');
+            themeToggleBtn.textContent = 'light_mode';
+            localStorage.setItem('theme', 'light-mode');
+        } else {
+            body.classList.remove('light-mode');
+            body.classList.add('dark-mode');
+            themeToggleBtn.textContent = 'dark_mode';
+            localStorage.setItem('theme', 'dark-mode');
+        }
+    });
+
+    // 2. 模式切换逻辑 (文字聊天/音频聊天)
+    modeTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const mode = tab.dataset.mode;
+
+            // 移除所有 tab 和 chat-container 的 active 类
+            modeTabs.forEach(t => t.classList.remove('active'));
+            chatContainers.forEach(c => c.classList.remove('active'));
+
+            // 添加当前点击 tab 和对应 chat-container 的 active 类
+            tab.classList.add('active');
+            document.querySelector(`.chat-container.${mode}-mode`).classList.add('active');
+
+            // 根据模式显示/隐藏相关按钮
+            if (mode === 'text') {
+                micButton.style.display = 'none';
+                cameraButton.style.display = 'none';
+                screenButton.style.display = 'none';
+                stopVideoButton.style.display = 'none'; // 确保视频停止按钮也隐藏
+                // 隐藏视频和屏幕共享容器
+                if (videoManager) {
+                    stopVideo();
+                }
+                if (screenRecorder) {
+                    stopScreenSharing();
+                }
+                screenContainer.style.display = 'none';
+                document.getElementById('video-container').style.display = 'none';
+
+            } else { // audio mode
+                micButton.style.display = 'flex'; // 使用 flex 以便居中图标
+                cameraButton.style.display = 'flex';
+                screenButton.style.display = 'flex';
+                // 视频和屏幕共享容器的显示由各自的 handleVideoToggle 和 handleScreenShare 控制
+            }
+        });
+    });
+
+    // 默认激活文字聊天模式
+    document.querySelector('.tab[data-mode="text"]').click();
+
+    // 3. 日志显示控制逻辑
+    toggleLogBtn.addEventListener('click', () => {
+        logPanel.classList.toggle('collapsed');
+        toggleLogBtn.textContent = logPanel.classList.contains('collapsed') ? 'description' : 'description'; // 图标保持不变，或者可以切换为 expand_less/expand_more
+        // 如果日志面板折叠，清空按钮也隐藏
+        clearLogsBtn.style.display = logPanel.classList.contains('collapsed') ? 'none' : 'inline-block';
+    });
+
+    clearLogsBtn.addEventListener('click', () => {
+        logsContainer.innerHTML = ''; // 清空日志内容
+        logMessage('日志已清空', 'system');
+    });
+
+    // 4. 配置面板切换逻辑 (现在通过顶部导航的齿轮图标控制)
+    configToggle.addEventListener('click', () => {
+        configContainer.classList.toggle('active'); // control-panel 现在是 configContainer
+        configToggle.classList.toggle('active');
+    });
+
+    applyConfigButton.addEventListener('click', () => {
+        configContainer.classList.remove('active');
+        configToggle.classList.remove('active');
+    });
 });
 
 // State variables
@@ -91,35 +187,35 @@ const client = new MultimodalLiveClient();
  * @param {string} [type='system'] - The type of the message (system, user, ai).
  */
 function logMessage(message, type = 'system') {
-    const logEntry = document.createElement('div');
-    logEntry.classList.add('log-entry', type);
-
-    const timestamp = document.createElement('span');
-    timestamp.classList.add('timestamp');
-    timestamp.textContent = new Date().toLocaleTimeString();
-    logEntry.appendChild(timestamp);
-
-    const emoji = document.createElement('span');
-    emoji.classList.add('emoji');
-    switch (type) {
-        case 'system':
-            emoji.textContent = '⚙️';
-            break;
-        case 'user':
-            emoji.textContent = '🫵';
-            break;
-        case 'ai':
-            emoji.textContent = '🤖';
-            break;
-    }
-    logEntry.appendChild(emoji);
-
-    const messageText = document.createElement('span');
-    messageText.textContent = message;
-    logEntry.appendChild(messageText);
-
-    logsContainer.appendChild(logEntry);
+    // 原始日志始终写入 logsContainer
+    const rawLogEntry = document.createElement('div');
+    rawLogEntry.classList.add('log-entry', type);
+    rawLogEntry.innerHTML = `
+        <span class="timestamp">${new Date().toLocaleTimeString()}</span>
+        <span class="emoji">${type === 'system' ? '⚙️' : (type === 'user' ? '🫵' : '🤖')}</span>
+        <span>${message}</span>
+    `;
+    logsContainer.appendChild(rawLogEntry);
     logsContainer.scrollTop = logsContainer.scrollHeight;
+
+    // 聊天消息写入 messageHistory
+    if (type === 'user' || type === 'ai') {
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message', type);
+
+        const avatarDiv = document.createElement('div');
+        avatarDiv.classList.add('avatar');
+        avatarDiv.textContent = type === 'user' ? '👤' : '🤖';
+
+        const contentDiv = document.createElement('div');
+        contentDiv.classList.add('content');
+        contentDiv.textContent = message; // 暂时只支持纯文本，后续可考虑 Markdown 渲染
+
+        messageDiv.appendChild(avatarDiv);
+        messageDiv.appendChild(contentDiv);
+        messageHistory.appendChild(messageDiv);
+        messageHistory.scrollTop = messageHistory.scrollHeight;
+    }
 }
 
 /**
@@ -127,7 +223,7 @@ function logMessage(message, type = 'system') {
  */
 function updateMicIcon() {
     micIcon.textContent = isRecording ? 'mic_off' : 'mic';
-    micButton.style.backgroundColor = isRecording ? '#ea4335' : '#4285f4';
+    micButton.classList.toggle('active', isRecording); // 使用 active 类控制样式
 }
 
 /**
@@ -277,20 +373,18 @@ async function connectToWebsocket() {
         await client.connect(config,apiKeyInput.value);
         isConnected = true;
         await resumeAudioContext();
-        connectButton.textContent = 'Disconnect';
+        connectButton.textContent = '断开连接';
         connectButton.classList.add('connected');
         messageInput.disabled = false;
         sendButton.disabled = false;
-        micButton.disabled = false;
-        cameraButton.disabled = false;
-        screenButton.disabled = false;
-        logMessage('Connected to Gemini 2.0 Flash Multimodal Live API', 'system');
+        // micButton, cameraButton, screenButton 的禁用状态由模式切换逻辑控制
+        logMessage('已连接到 Gemini 2.0 Flash 多模态实时 API', 'system');
     } catch (error) {
-        const errorMessage = error.message || 'Unknown error';
-        Logger.error('Connection error:', error);
-        logMessage(`Connection error: ${errorMessage}`, 'system');
+        const errorMessage = error.message || '未知错误';
+        Logger.error('连接错误:', error);
+        logMessage(`连接错误: ${errorMessage}`, 'system');
         isConnected = false;
-        connectButton.textContent = 'Connect';
+        connectButton.textContent = '连接';
         connectButton.classList.remove('connected');
         messageInput.disabled = true;
         sendButton.disabled = true;
@@ -315,14 +409,14 @@ function disconnectFromWebsocket() {
         isRecording = false;
         updateMicIcon();
     }
-    connectButton.textContent = 'Connect';
+    connectButton.textContent = '连接';
     connectButton.classList.remove('connected');
     messageInput.disabled = true;
     sendButton.disabled = true;
     micButton.disabled = true;
     cameraButton.disabled = true;
     screenButton.disabled = true;
-    logMessage('Disconnected from server', 'system');
+    logMessage('已从服务器断开连接', 'system');
     
     if (videoManager) {
         stopVideo();
@@ -436,8 +530,10 @@ connectButton.addEventListener('click', () => {
 
 messageInput.disabled = true;
 sendButton.disabled = true;
-micButton.disabled = true;
-connectButton.textContent = 'Connect';
+micButton.disabled = true; // 初始禁用，由模式切换控制显示
+cameraButton.disabled = true; // 初始禁用，由模式切换控制显示
+screenButton.disabled = true; // 初始禁用，由模式切换控制显示
+connectButton.textContent = '连接';
 
 /**
  * Handles the video toggle. Starts or stops video streaming.
@@ -464,19 +560,21 @@ async function handleVideoToggle() {
             isVideoActive = true;
             cameraIcon.textContent = 'videocam_off';
             cameraButton.classList.add('active');
-            Logger.info('Camera started successfully');
-            logMessage('Camera started', 'system');
+            document.getElementById('video-container').style.display = 'block'; // 显示视频容器
+            Logger.info('摄像头已启动');
+            logMessage('摄像头已启动', 'system');
 
         } catch (error) {
-            Logger.error('Camera error:', error);
-            logMessage(`Error: ${error.message}`, 'system');
+            Logger.error('摄像头错误:', error);
+            logMessage(`错误: ${error.message}`, 'system');
             isVideoActive = false;
             videoManager = null;
             cameraIcon.textContent = 'videocam';
             cameraButton.classList.remove('active');
+            document.getElementById('video-container').style.display = 'none'; // 隐藏视频容器
         }
     } else {
-        Logger.info('Stopping video');
+        Logger.info('停止视频');
         stopVideo();
     }
 }
@@ -492,7 +590,8 @@ function stopVideo() {
     isVideoActive = false;
     cameraIcon.textContent = 'videocam';
     cameraButton.classList.remove('active');
-    logMessage('Camera stopped', 'system');
+    document.getElementById('video-container').style.display = 'none'; // 隐藏视频容器
+    logMessage('摄像头已停止', 'system');
 }
 
 cameraButton.addEventListener('click', handleVideoToggle);
@@ -522,12 +621,12 @@ async function handleScreenShare() {
             isScreenSharing = true;
             screenIcon.textContent = 'stop_screen_share';
             screenButton.classList.add('active');
-            Logger.info('Screen sharing started');
-            logMessage('Screen sharing started', 'system');
+            Logger.info('屏幕共享已启动');
+            logMessage('屏幕共享已启动', 'system');
 
         } catch (error) {
-            Logger.error('Screen sharing error:', error);
-            logMessage(`Error: ${error.message}`, 'system');
+            Logger.error('屏幕共享错误:', error);
+            logMessage(`错误: ${error.message}`, 'system');
             isScreenSharing = false;
             screenIcon.textContent = 'screen_share';
             screenButton.classList.remove('active');
@@ -550,7 +649,7 @@ function stopScreenSharing() {
     screenIcon.textContent = 'screen_share';
     screenButton.classList.remove('active');
     screenContainer.style.display = 'none';
-    logMessage('Screen sharing stopped', 'system');
+    logMessage('屏幕共享已停止', 'system');
 }
 
 screenButton.addEventListener('click', handleScreenShare);
