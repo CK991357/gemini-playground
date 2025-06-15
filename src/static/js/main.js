@@ -2,9 +2,11 @@ import { AudioRecorder } from './audio/audio-recorder.js';
 import { AudioStreamer } from './audio/audio-streamer.js';
 import { CONFIG } from './config/config.js';
 import { MultimodalLiveClient } from './core/websocket-client.js';
+import { ToolManager } from './tools/tool-manager.js'; // 新增
 import { Logger } from './utils/logger.js';
 import { ScreenRecorder } from './video/screen-recorder.js';
 import { VideoManager } from './video/video-manager.js';
+
 
 /**
  * @fileoverview Main entry point for the application.
@@ -116,20 +118,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 根据模式显示/隐藏相关按钮
             if (mode === 'text') {
-                micButton.style.display = 'none';
-                cameraButton.style.display = 'none';
-                screenButton.style.display = 'none';
-                stopVideoButton.style.display = 'none'; // 确保视频停止按钮也隐藏
-                // 隐藏视频和屏幕共享容器
-                if (videoManager) {
-                    stopVideo();
-                }
-                if (screenRecorder) {
-                    stopScreenSharing();
-                }
-                screenContainer.style.display = 'none';
-                document.getElementById('video-container').style.display = 'none';
+                // 移除隐藏按钮和容器的逻辑，使其在文本模式下也可见
+                // micButton.style.display = 'none';
+                // cameraButton.style.display = 'none';
+                // screenButton.style.display = 'none';
+                // stopVideoButton.style.display = 'none';
+                // if (videoManager) { stopVideo(); }
+                // if (screenRecorder) { stopScreenSharing(); }
+                // screenContainer.style.display = 'none';
+                // document.getElementById('video-container').style.display = 'none';
 
+                // 确保在切换模式时，如果视频或屏幕共享是激活的，它们仍然保持激活状态
+                // 视频和屏幕共享容器的显示由各自的 handleVideoToggle 和 handleScreenShare 控制
+                micButton.style.display = 'flex'; // 确保在文本模式下也显示
+                cameraButton.style.display = 'flex'; // 确保在文本模式下也显示
+                screenButton.style.display = 'flex'; // 确保在文本模式下也显示
             } else { // audio mode
                 micButton.style.display = 'flex'; // 使用 flex 以便居中图标
                 cameraButton.style.display = 'flex';
@@ -185,9 +188,11 @@ let videoManager = null;
 let isScreenSharing = false;
 let screenRecorder = null;
 let isUsingTool = false;
+let currentAiResponseBuffer = ''; // 新增：用于累积 AI 响应文本
 
 // Multimodal Client
 const client = new MultimodalLiveClient();
+const toolManager = new ToolManager(); // 新增
 
 /**
  * Logs a message to the UI.
@@ -369,8 +374,8 @@ async function connectToWebsocket() {
         generationConfig: {
             responseModalities: responseTypeSelect.value,
             speechConfig: {
-                voiceConfig: { 
-                    prebuiltVoiceConfig: { 
+                voiceConfig: {
+                    prebuiltVoiceConfig: {
                         voiceName: voiceSelect.value    // You can change voice in the config.js file
                     }
                 }
@@ -381,8 +386,9 @@ async function connectToWebsocket() {
             parts: [{
                 text: systemInstructionInput.value     // You can change system instruction in the config.js file
             }],
-        }
-    };  
+        },
+        tools: toolManager.getToolDeclarations() // 新增：添加工具声明
+    };
 
     try {
         await client.connect(config,apiKeyInput.value);
@@ -492,11 +498,26 @@ client.on('audio', async (data) => {
     }
 });
 
-client.on('content', (data) => {
+client.on('content', async (data) => { // 注意这里需要 async
     if (data.modelTurn) {
-        if (data.modelTurn.parts.some(part => part.functionCall)) {
+        const functionCalls = data.modelTurn.parts.filter(part => part.functionCall);
+        if (functionCalls.length > 0) {
             isUsingTool = true;
             Logger.info('Model is using a tool');
+            for (const call of functionCalls) {
+                try {
+                    const toolResponse = await toolManager.handleToolCall(call.functionCall);
+                    client.send(toolResponse); // 将工具执行结果发送回模型
+                } catch (error) {
+                    Logger.error('Tool execution failed:', error);
+                    client.send({
+                        functionResponses: [{
+                            response: { error: error.message },
+                            id: call.functionCall.id
+                        }]
+                    });
+                }
+            }
         } else if (data.modelTurn.parts.some(part => part.functionResponse)) {
             isUsingTool = false;
             Logger.info('Tool usage completed');
@@ -504,7 +525,16 @@ client.on('content', (data) => {
 
         const text = data.modelTurn.parts.map(part => part.text).join('');
         if (text) {
-            logMessage(text, 'ai');
+            currentAiResponseBuffer += text; // 累积文本
+
+            // 检查是否是 turn complete 或者是否包含句子结束符
+            // 这里的判断逻辑可以根据实际需求调整，例如更复杂的自然语言处理判断
+            const endsWithSentenceTerminator = /[.!?。？！\n]$/.test(currentAiResponseBuffer);
+
+            if (data.modelTurn.complete || endsWithSentenceTerminator) {
+                logMessage(currentAiResponseBuffer, 'ai');
+                currentAiResponseBuffer = ''; // 清空缓冲区
+            }
         }
     }
 });
@@ -513,6 +543,11 @@ client.on('interrupted', () => {
     audioStreamer?.stop();
     isUsingTool = false;
     Logger.info('Model interrupted');
+    // 确保在中断时，缓冲区中剩余的任何文本都被显示
+    if (currentAiResponseBuffer) {
+        logMessage(currentAiResponseBuffer, 'ai');
+        currentAiResponseBuffer = '';
+    }
     logMessage('Model interrupted', 'system');
 });
 
@@ -522,6 +557,11 @@ client.on('setupcomplete', () => {
 
 client.on('turncomplete', () => {
     isUsingTool = false;
+    // 确保在 turn complete 时，缓冲区中剩余的任何文本都被显示
+    if (currentAiResponseBuffer) {
+        logMessage(currentAiResponseBuffer, 'ai');
+        currentAiResponseBuffer = '';
+    }
     logMessage('Turn complete', 'system');
 });
 
