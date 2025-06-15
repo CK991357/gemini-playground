@@ -222,7 +222,10 @@ function logMessage(message, type = 'system') {
         messageDiv.appendChild(avatarDiv);
         messageDiv.appendChild(contentDiv);
         messageHistory.appendChild(messageDiv);
-        messageHistory.scrollTop = messageHistory.scrollHeight;
+        // 确保在浏览器下一次重绘前滚动到底部
+        requestAnimationFrame(() => {
+            messageHistory.scrollTop = messageHistory.scrollHeight;
+        });
     }
 }
 
@@ -230,8 +233,12 @@ function logMessage(message, type = 'system') {
  * Updates the microphone icon based on the recording state.
  */
 function updateMicIcon() {
-    micIcon.textContent = isRecording ? 'mic_off' : 'mic';
-    micButton.classList.toggle('active', isRecording); // 使用 active 类控制样式
+    if (micIcon) { // 添加空值检查
+        micIcon.textContent = isRecording ? 'mic_off' : 'mic';
+    }
+    if (micButton) { // 添加空值检查
+        micButton.classList.toggle('active', isRecording); // 使用 active 类控制样式
+    }
 }
 
 /**
@@ -426,9 +433,9 @@ function disconnectFromWebsocket() {
     connectButton.classList.remove('connected');
     messageInput.disabled = true;
     sendButton.disabled = true;
-    micButton.disabled = true;
-    cameraButton.disabled = true;
-    screenButton.disabled = true;
+    if (micButton) micButton.disabled = true; // 添加空值检查
+    if (cameraButton) cameraButton.disabled = true; // 添加空值检查
+    if (screenButton) screenButton.disabled = true; // 添加空值检查
     logMessage('已从服务器断开连接', 'system');
     updateConnectionStatus(); // 更新连接状态显示
     

@@ -64,13 +64,19 @@ body {
     color: var(--primary-color);
 }
 
+.nav-tools {
+    display: flex;
+    align-items: center;
+    gap: 15px; /* 调整按钮间距 */
+}
+
 .nav-tools button {
     background: none;
     border: none;
     color: var(--text-secondary-color);
     font-size: 24px;
     cursor: pointer;
-    margin-left: 15px;
+    /* margin-left: 15px; */ /* 移除，由 gap 控制 */
     transition: color 0.3s ease, transform 0.2s ease;
 }
 
@@ -495,9 +501,21 @@ body {
 @media (max-width: 1200px) {
     /* 显示移动端连接按钮 */
     #mobile-connect {
-        display: block !important;
-        padding: 8px 15px;
-        font-size: 14px;
+        display: block; /* 移除 !important，通过媒体查询控制 */
+        /* 继承 .action-button 样式 */
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 8px 15px; /* 调整内边距 */
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px; /* 调整字体大小 */
+        font-weight: 600;
+        transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+    #mobile-connect:hover {
+        background-color: var(--secondary-color);
+        transform: translateY(-2px);
     }
 
     .main-container {
