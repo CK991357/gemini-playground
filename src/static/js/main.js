@@ -37,11 +37,12 @@ const systemInstructionInput = document.getElementById('system-instruction');
 systemInstructionInput.value = CONFIG.SYSTEM_INSTRUCTION.TEXT;
 const applyConfigButton = document.getElementById('apply-config');
 const responseTypeSelect = document.getElementById('response-type-select');
+const mobileConnectButton = document.getElementById('mobile-connect'); // 新增移动端连接按钮
 
 // 新增的 DOM 元素
 const themeToggleBtn = document.getElementById('theme-toggle');
 const toggleLogBtn = document.getElementById('toggle-log');
-const logPanel = document.querySelector('.log-container');
+const logPanel = document.querySelector('.chat-container.log-mode'); // 修正日志面板选择器
 const clearLogsBtn = document.getElementById('clear-logs');
 const modeTabs = document.querySelectorAll('.mode-tabs .tab');
 const chatContainers = document.querySelectorAll('.chat-container');
@@ -143,10 +144,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 3. 日志显示控制逻辑
     toggleLogBtn.addEventListener('click', () => {
-        logPanel.classList.toggle('collapsed');
-        toggleLogBtn.textContent = logPanel.classList.contains('collapsed') ? 'description' : 'description'; // 图标保持不变，或者可以切换为 expand_less/expand_more
-        // 如果日志面板折叠，清空按钮也隐藏
-        clearLogsBtn.style.display = logPanel.classList.contains('collapsed') ? 'none' : 'inline-block';
+        // 切换到日志标签页
+        document.querySelector('.tab[data-mode="log"]').click();
     });
 
     clearLogsBtn.addEventListener('click', () => {
@@ -158,11 +157,20 @@ document.addEventListener('DOMContentLoaded', () => {
     configToggle.addEventListener('click', () => {
         configContainer.classList.toggle('active'); // control-panel 现在是 configContainer
         configToggle.classList.toggle('active');
+        // 移动端滚动锁定
+        if (window.innerWidth <= 1200) {
+            document.body.style.overflow = configContainer.classList.contains('active')
+                ? 'hidden' : '';
+        }
     });
 
     applyConfigButton.addEventListener('click', () => {
         configContainer.classList.remove('active');
         configToggle.classList.remove('active');
+        // 确保关闭设置面板时解除滚动锁定
+        if (window.innerWidth <= 1200) {
+            document.body.style.overflow = '';
+        }
     });
 });
 
@@ -377,8 +385,12 @@ async function connectToWebsocket() {
         connectButton.classList.add('connected');
         messageInput.disabled = false;
         sendButton.disabled = false;
-        // micButton, cameraButton, screenButton 的禁用状态由模式切换逻辑控制
+        // 启用音频模式按钮
+        micButton.disabled = false;
+        cameraButton.disabled = false;
+        screenButton.disabled = false;
         logMessage('已连接到 Gemini 2.0 Flash 多模态实时 API', 'system');
+        updateConnectionStatus(); // 更新连接状态显示
     } catch (error) {
         const errorMessage = error.message || '未知错误';
         Logger.error('连接错误:', error);
@@ -391,6 +403,7 @@ async function connectToWebsocket() {
         micButton.disabled = true;
         cameraButton.disabled = true;
         screenButton.disabled = true;
+        updateConnectionStatus(); // 更新连接状态显示
     }
 }
 
@@ -417,6 +430,7 @@ function disconnectFromWebsocket() {
     cameraButton.disabled = true;
     screenButton.disabled = true;
     logMessage('已从服务器断开连接', 'system');
+    updateConnectionStatus(); // 更新连接状态显示
     
     if (videoManager) {
         stopVideo();
@@ -448,8 +462,17 @@ client.on('log', (log) => {
     logMessage(`${log.type}: ${JSON.stringify(log.message)}`, 'system');
 });
 
+let reconnectAttempts = 0;
+const MAX_RECONNECT = 3;
+
 client.on('close', (event) => {
     logMessage(`WebSocket connection closed (code ${event.code})`, 'system');
+    if (event.code === 1006 && reconnectAttempts < MAX_RECONNECT) {
+        setTimeout(() => {
+            reconnectAttempts++;
+            connectToWebsocket();
+        }, 2000);
+    }
 });
 
 client.on('audio', async (data) => {
@@ -504,6 +527,11 @@ client.on('error', (error) => {
     logMessage(`Error: ${error.message}`, 'system');
 });
 
+// 添加全局错误处理
+window.addEventListener('error', (event) => {
+    logMessage(`系统错误: ${event.message}`, 'system');
+});
+
 client.on('message', (message) => {
     if (message.error) {
         Logger.error('Server error:', message.error);
@@ -518,7 +546,9 @@ messageInput.addEventListener('keypress', (event) => {
     }
 });
 
-micButton.addEventListener('click', handleMicToggle);
+micButton.addEventListener('click', () => {
+    if (isConnected) handleMicToggle();
+});
 
 connectButton.addEventListener('click', () => {
     if (isConnected) {
@@ -534,6 +564,28 @@ micButton.disabled = true; // 初始禁用，由模式切换控制显示
 cameraButton.disabled = true; // 初始禁用，由模式切换控制显示
 screenButton.disabled = true; // 初始禁用，由模式切换控制显示
 connectButton.textContent = '连接';
+
+// 移动端连接按钮逻辑
+mobileConnectButton?.addEventListener('click', () => {
+    if (isConnected) {
+        disconnectFromWebsocket();
+    } else {
+        connectToWebsocket();
+    }
+});
+
+/**
+ * Updates the connection status display for both desktop and mobile buttons.
+ */
+function updateConnectionStatus() {
+    const mobileBtn = document.getElementById('mobile-connect');
+    if (mobileBtn) {
+        mobileBtn.textContent = isConnected ? '断开连接' : '连接';
+        mobileBtn.classList.toggle('connected', isConnected);
+    }
+}
+
+updateConnectionStatus(); // 初始更新连接状态
 
 /**
  * Handles the video toggle. Starts or stops video streaming.
@@ -594,7 +646,9 @@ function stopVideo() {
     logMessage('摄像头已停止', 'system');
 }
 
-cameraButton.addEventListener('click', handleVideoToggle);
+cameraButton.addEventListener('click', () => {
+    if (isConnected) handleVideoToggle();
+});
 stopVideoButton.addEventListener('click', stopVideo);
 
 cameraButton.disabled = true;
@@ -609,14 +663,35 @@ async function handleScreenShare() {
             screenContainer.style.display = 'block';
             
             screenRecorder = new ScreenRecorder();
-            await screenRecorder.start(screenPreview, (frameData) => {
+            // 性能优化：添加帧节流
+            const throttle = (func, limit) => {
+                let lastFunc;
+                let lastRan;
+                return function() {
+                    if (!lastRan) {
+                        func.apply(this, arguments);
+                        lastRan = Date.now();
+                    } else {
+                        clearTimeout(lastFunc);
+                        lastFunc = setTimeout(() => {
+                            if ((Date.now() - lastRan) >= limit) {
+                                func.apply(this, arguments);
+                                lastRan = Date.now();
+                            }
+                        }, limit - (Date.now() - lastRan));
+                    }
+                }
+            };
+            const throttledSendFrame = throttle((frameData) => {
                 if (isConnected) {
                     client.sendRealtimeInput([{
                         mimeType: "image/jpeg",
                         data: frameData
                     }]);
                 }
-            });
+            }, 1000 / fpsInput.value); // 根据 fpsInput 的值进行节流
+
+            await screenRecorder.start(screenPreview, throttledSendFrame);
 
             isScreenSharing = true;
             screenIcon.textContent = 'stop_screen_share';
@@ -652,6 +727,8 @@ function stopScreenSharing() {
     logMessage('屏幕共享已停止', 'system');
 }
 
-screenButton.addEventListener('click', handleScreenShare);
+screenButton.addEventListener('click', () => {
+    if (isConnected) handleScreenShare();
+});
 screenButton.disabled = true;
   

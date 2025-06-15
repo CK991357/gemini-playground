@@ -252,9 +252,10 @@ body {
 .text-mode .message-history {
     flex-grow: 1;
     overflow-y: auto;
+    max-height: calc(100vh - 200px); /* 限制高度 */
     padding-right: 10px; /* 留出滚动条空间 */
     margin-bottom: 15px;
-    padding-bottom: 15px; /* 确保消息不会被输入框遮挡 */
+    padding-bottom: 80px; /* 为输入框留空间 */
 }
 
 .message {
@@ -315,7 +316,9 @@ body {
     background-color: var(--surface-color); /* 确保背景色一致 */
     padding: 15px 20px; /* 调整内边距 */
     box-sizing: border-box; /* 包含内边距在宽度内 */
-    margin-top: auto; /* 将输入区域推到底部 */
+    position: sticky; /* 固定输入框位置 */
+    bottom: 0;
+    z-index: 10;
 }
 
 .text-mode #message-input {
@@ -490,6 +493,13 @@ body {
 
 /* 响应式设计 */
 @media (max-width: 1200px) {
+    /* 显示移动端连接按钮 */
+    #mobile-connect {
+        display: block !important;
+        padding: 8px 15px;
+        font-size: 14px;
+    }
+
     .main-container {
         grid-template-columns: 1fr; /* 单列布局 */
     }
@@ -512,9 +522,11 @@ body {
     }
     .control-panel.active {
         display: flex; /* 激活时显示 */
+        justify-content: flex-end; /* 调整设置面板位置 */
     }
     .control-panel .settings-wrapper { /* 新增一个内部 wrapper 来承载内容 */
-        width: 300px; /* 侧滑菜单宽度 */
+        width: 85%; /* 侧滑菜单宽度 */
+        max-width: 400px;
         height: 100%;
         background-color: var(--surface-color);
         box-shadow: -4px 0 16px var(--shadow-color);
@@ -543,11 +555,15 @@ body {
         height: 100%;
         padding-bottom: 0; /* 移除刘海屏适配，因为现在是内容区的一部分 */
     }
+    /* 隐藏桌面端连接按钮 */
+    .connection-controls {
+        display: none;
+    }
 }
 
 @media (max-width: 768px) {
     .app-nav {
-        padding: 10px 15px;
+        padding: 10px;
     }
     .app-title {
         font-size: 20px;
@@ -567,8 +583,8 @@ body {
         padding: 10px;
     }
     .tab {
-        padding: 12px 15px;
-        font-size: 14px;
+        padding: 10px 12px;
+        font-size: 13px;
     }
     .chat-container {
         padding: 15px;
@@ -593,6 +609,9 @@ body {
     }
     .audio-mode .media-display-area {
         grid-template-columns: 1fr; /* 视频和屏幕共享堆叠 */
+    }
+    .audio-mode .media-preview-box {
+        min-height: 150px;
     }
     .audio-mode .audio-controls .action-button {
         width: 48px;
