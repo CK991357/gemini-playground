@@ -827,6 +827,7 @@ async function handleScreenShare() {
 
 /**
  * Stops the screen sharing.
+ * @returns {void}
  */
 function stopScreenSharing() {
     if (screenRecorder) {
@@ -835,11 +836,7 @@ function stopScreenSharing() {
     }
     isScreenSharing = false;
     screenButton.classList.remove('active');
-    // screenButton.textContent = 'screen_share'; // 直接修改按钮文本
-    // 原始版本使用 screenIcon，这里保持一致
-    if (screenIcon) {
-        screenIcon.textContent = 'screen_share';
-    }
+    screenButton.textContent = 'screen_share'; // 直接修改按钮文本
     // 停止时隐藏预览
     mediaPreviewsContainer.style.display = 'none';
     screenContainer.style.display = 'none';
