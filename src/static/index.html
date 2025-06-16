@@ -24,7 +24,7 @@
                     <button id="mic-button" class="media-button material-symbols-outlined">mic</button>
                     <button id="camera-button" class="media-button material-symbols-outlined">videocam</button>
                     <button id="screen-button" class="media-button material-symbols-outlined">screen_share</button>
-                    <button id="flip-camera-button" class="media-button material-symbols-outlined">flip_camera_ios</button>
+                    <button id="flip-camera" class="media-button material-symbols-outlined">flip_camera_ios</button>
                 </div>
             </div>
         </nav>
@@ -89,9 +89,9 @@
                     
                     <!-- 新增媒体预览容器，放置在聊天历史上方，以便浮动 -->
                     <div class="media-previews" id="media-previews">
-                        <div id="video-preview-container" class="media-preview">
-                            <video id="video-preview-element" playsinline autoplay muted></video>
-                            <button id="stop-video-button" class="close-button material-symbols-outlined">close</button>
+                        <div id="video-container" class="media-preview">
+                            <video id="preview" playsinline autoplay muted></video>
+                            <button id="stop-video" class="close-button material-symbols-outlined">close</button>
                         </div>
                         <div id="screen-preview-container" class="media-preview">
                             <video id="screen-preview-element" playsinline autoplay muted></video>

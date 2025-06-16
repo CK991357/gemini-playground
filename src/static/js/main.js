@@ -49,9 +49,9 @@ const chatContainers = document.querySelectorAll('.chat-container');
 
 // 新增媒体预览相关 DOM 元素
 const mediaPreviewsContainer = document.getElementById('media-previews');
-const videoPreviewContainer = document.getElementById('video-preview-container');
-const videoPreviewElement = document.getElementById('video-preview-element');
-const stopScreenButton = document.getElementById('stop-screen-button'); // 新增停止屏幕共享按钮
+const videoPreviewContainer = document.getElementById('video-container'); // 对应 video-manager.js 中的 video-container
+const videoPreviewElement = document.getElementById('preview'); // 对应 video-manager.js 中的 preview
+const stopScreenButton = document.getElementById('stop-screen-button');
 
 // Load saved values from localStorage
 const savedApiKey = localStorage.getItem('gemini_api_key');
@@ -243,7 +243,11 @@ function scrollToBottom() {
 function updateMicIcon() {
     if (micButton) {
         micButton.classList.toggle('active', isRecording);
-        micButton.textContent = isRecording ? 'mic_off' : 'mic'; // 直接修改按钮文本
+        // micButton.textContent = isRecording ? 'mic_off' : 'mic'; // 直接修改按钮文本
+        // 原始版本使用 micIcon，这里保持一致
+        if (micIcon) {
+            micIcon.textContent = isRecording ? 'mic_off' : 'mic';
+        }
     }
 }
 
@@ -673,12 +677,7 @@ async function handleVideoToggle() {
         try {
             Logger.info('Attempting to start video');
             if (!videoManager) {
-                videoManager = new VideoManager(
-                    videoPreviewContainer, // videoContainerElement
-                    videoPreviewElement,   // previewVideoElement
-                    stopVideoButton,       // stopVideoButtonElement
-                    flipCameraButton       // flipCameraButtonElement
-                );
+                videoManager = new VideoManager(); // 恢复为无参数构造
             }
             
             await videoManager.start(fpsInput.value,(frameData) => {
@@ -689,7 +688,11 @@ async function handleVideoToggle() {
 
             isVideoActive = true;
             cameraButton.classList.add('active');
-            cameraButton.textContent = 'videocam_off'; // 直接修改按钮文本
+            // cameraButton.textContent = 'videocam_off'; // 直接修改按钮文本
+            // 原始版本使用 cameraIcon，这里保持一致
+            if (cameraIcon) {
+                cameraIcon.textContent = 'videocam_off';
+            }
             updateMediaPreviewsDisplay(); // 更新预览显示
             Logger.info('摄像头已启动');
             logMessage('摄像头已启动', 'system');
@@ -700,7 +703,11 @@ async function handleVideoToggle() {
             isVideoActive = false;
             videoManager = null;
             cameraButton.classList.remove('active');
-            cameraButton.textContent = 'videocam'; // 直接修改按钮文本
+            // cameraButton.textContent = 'videocam'; // 直接修改按钮文本
+            // 原始版本使用 cameraIcon，这里保持一致
+            if (cameraIcon) {
+                cameraIcon.textContent = 'videocam';
+            }
             updateMediaPreviewsDisplay(); // 更新预览显示
         }
     } else {
@@ -719,7 +726,11 @@ function stopVideo() {
     }
     isVideoActive = false;
     cameraButton.classList.remove('active');
-    cameraButton.textContent = 'videocam'; // 直接修改按钮文本
+    // cameraButton.textContent = 'videocam'; // 直接修改按钮文本
+    // 原始版本使用 cameraIcon，这里保持一致
+    if (cameraIcon) {
+        cameraIcon.textContent = 'videocam';
+    }
     updateMediaPreviewsDisplay(); // 更新预览显示
     logMessage('摄像头已停止', 'system');
 }
@@ -771,7 +782,11 @@ async function handleScreenShare() {
 
             isScreenSharing = true;
             screenButton.classList.add('active');
-            screenButton.textContent = 'stop_screen_share'; // 直接修改按钮文本
+            // screenButton.textContent = 'stop_screen_share'; // 直接修改按钮文本
+            // 原始版本使用 screenIcon，这里保持一致
+            if (screenIcon) {
+                screenIcon.textContent = 'stop_screen_share';
+            }
             updateMediaPreviewsDisplay(); // 更新预览显示
             Logger.info('屏幕共享已启动');
             logMessage('屏幕共享已启动', 'system');
@@ -781,7 +796,11 @@ async function handleScreenShare() {
             logMessage(`错误: ${error.message}`, 'system');
             isScreenSharing = false;
             screenButton.classList.remove('active');
-            screenButton.textContent = 'screen_share'; // 直接修改按钮文本
+            // screenButton.textContent = 'screen_share'; // 直接修改按钮文本
+            // 原始版本使用 screenIcon，这里保持一致
+            if (screenIcon) {
+                screenIcon.textContent = 'screen_share';
+            }
             updateMediaPreviewsDisplay(); // 更新预览显示
         }
     } else {
@@ -799,7 +818,11 @@ function stopScreenSharing() {
     }
     isScreenSharing = false;
     screenButton.classList.remove('active');
-    screenButton.textContent = 'screen_share'; // 直接修改按钮文本
+    // screenButton.textContent = 'screen_share'; // 直接修改按钮文本
+    // 原始版本使用 screenIcon，这里保持一致
+    if (screenIcon) {
+        screenIcon.textContent = 'screen_share';
+    }
     updateMediaPreviewsDisplay(); // 更新预览显示
     logMessage('屏幕共享已停止', 'system');
 }
