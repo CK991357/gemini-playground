@@ -173,6 +173,7 @@ let audioStreamer = null;
 let audioCtx = null;
 let isConnected = false;
 let audioRecorder = null;
+let micStream = null; // 新增：用于保存麦克风流
 let isVideoActive = false;
 let videoManager = null;
 let isScreenSharing = false;
@@ -328,6 +329,7 @@ async function handleMicToggle() {
             });
 
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            micStream = stream; // 保存流引用
             const source = audioCtx.createMediaStreamSource(stream);
             source.connect(inputAnalyser);
             
@@ -345,6 +347,11 @@ async function handleMicToggle() {
     } else {
         if (audioRecorder && isRecording) {
             audioRecorder.stop();
+            // 关闭音频流
+            if (micStream) {
+                micStream.getTracks().forEach(track => track.stop());
+                micStream = null; // 清空流引用
+            }
         }
         isRecording = false;
         logMessage('Microphone stopped', 'system');
@@ -681,7 +688,11 @@ async function handleVideoToggle() {
 
             Logger.info('Attempting to start video');
             if (!videoManager) {
-                videoManager = new VideoManager(); // 恢复为无参数构造
+                videoManager = new VideoManager(videoPreviewElement, { // 传入 videoPreviewElement
+                    width: 640,
+                    height: 480,
+                    facingMode: 'user' // 默认前置摄像头
+                });
             }
             
             await videoManager.start(fpsInput.value,(frameData) => {
@@ -729,8 +740,12 @@ async function handleVideoToggle() {
 function stopVideo() {
     Logger.info('Stopping video...');
     if (videoManager) {
-        videoManager.stop();
-        videoManager = null;
+        videoManager.stop(); // 调用 videoManager 自身的停止方法
+        // 关闭视频流
+        if (videoManager.stream) { // videoManager.stream 应该保存了 MediaStream 对象
+            videoManager.stream.getTracks().forEach(track => track.stop());
+        }
+        videoManager = null; // 清空 videoManager 引用
     }
     isVideoActive = false;
     cameraButton.classList.remove('active');
@@ -750,6 +765,24 @@ cameraButton.addEventListener('click', () => {
     if (isConnected) handleVideoToggle();
 });
 stopVideoButton.addEventListener('click', stopVideo); // 绑定新的停止视频按钮
+
+// 获取预览窗中的翻转按钮
+const flipCameraButton = document.getElementById('flip-camera');
+
+// 绑定翻转按钮事件（确保在DOM加载完成后执行）
+flipCameraButton.addEventListener('click', async () => {
+    if (videoManager) {
+        try {
+            await videoManager.flipCamera();
+            logMessage('摄像头已翻转', 'system');
+        } catch (error) {
+            logMessage(`翻转摄像头失败: ${error.message}`, 'error');
+            console.error('翻转摄像头失败:', error);
+        }
+    } else {
+        logMessage('摄像头未激活，无法翻转', 'system');
+    }
+});
 
 cameraButton.disabled = true;
 
@@ -865,16 +898,17 @@ function initMobileHandlers() {
     });
     
     // 移动端翻转摄像头
-    document.getElementById('flip-camera').addEventListener('touchstart', async (e) => {
-        e.preventDefault();
-        if (videoManager) {
-            try {
-                await videoManager.flipCamera();
-            } catch (error) {
-                logMessage(`翻转摄像头失败: ${error.message}`, 'system');
-            }
-        }
-    });
+    // 移除此处的事件绑定，因为已移至全局
+    // document.getElementById('flip-camera').addEventListener('touchstart', async (e) => {
+    //     e.preventDefault();
+    //     if (videoManager) {
+    //         try {
+    //             await videoManager.flipCamera();
+    //         } catch (error) {
+    //             logMessage(`翻转摄像头失败: ${error.message}`, 'system');
+    //         }
+    //     }
+    // });
 }
 
 // 在 DOMContentLoaded 中调用

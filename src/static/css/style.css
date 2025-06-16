@@ -699,13 +699,41 @@ body {
     .audio-mode .media-preview-box {
         min-height: 150px;
     }
-    .audio-mode .audio-controls .action-button {
-        width: 48px;
-        height: 48px;
-        font-size: 24px;
-    }
-    .text-mode .input-area {
-        padding-left: 15px;
-        padding-right: 15px;
-    }
+.audio-mode .audio-controls .action-button {
+    width: 48px;
+    height: 48px;
+    font-size: 24px;
+}
+}
+.text-mode .input-area {
+    padding-left: 15px;
+    padding-right: 15px;
+}
+/* 添加视频控制按钮样式 */
+.video-controls {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    display: flex;
+    gap: 5px;
+    z-index: 10; /* 确保按钮在视频上方 */
+}
+
+.video-controls button {
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s ease; /* 添加过渡效果 */
+}
+
+.video-controls button:hover {
+    background: rgba(0, 0, 0, 0.7); /* 悬停效果 */
 }
