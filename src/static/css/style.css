@@ -709,17 +709,22 @@ body {
     padding-left: 15px;
     padding-right: 15px;
 }
-/* 添加视频控制按钮样式 */
+/* style.css */
 .video-controls {
     position: absolute;
-    bottom: 5px;
+    top: 5px;
     right: 5px;
+    bottom: 5px;
+    left: 5px;
     display: flex;
-    gap: 5px;
-    z-index: 10; /* 确保按钮在视频上方 */
+    justify-content: space-between;
+    align-items: flex-start;
+    z-index: 10;
+    pointer-events: none; /* 允许点击下方视频 */
 }
 
 .video-controls button {
+    pointer-events: auto; /* 恢复按钮点击 */
     background: rgba(0, 0, 0, 0.5);
     color: white;
     border: none;
@@ -731,9 +736,19 @@ body {
     justify-content: center;
     cursor: pointer;
     font-size: 16px;
-    transition: background-color 0.3s ease; /* 添加过渡效果 */
+    transition: background-color 0.3s ease;
 }
 
-.video-controls button:hover {
-    background: rgba(0, 0, 0, 0.7); /* 悬停效果 */
+/* 关闭按钮放在右上角 */
+#stop-video {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+}
+
+/* 翻转按钮放在右下角 */
+#flip-camera {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
 }

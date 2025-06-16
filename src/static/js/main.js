@@ -17,11 +17,9 @@ const messageHistory = document.getElementById('message-history'); // 用于聊�
 const messageInput = document.getElementById('message-input');
 const sendButton = document.getElementById('send-button');
 const micButton = document.getElementById('mic-button');
-// const micIcon = document.getElementById('mic-icon'); // 删除，不再需要
 const audioVisualizer = document.getElementById('audio-visualizer'); // 保持，虽然音频模式删除，但可能用于其他音频可视化
 const connectButton = document.getElementById('connect-button');
 const cameraButton = document.getElementById('camera-button');
-// const cameraIcon = document.getElementById('camera-icon'); // 删除，不再需要
 const stopVideoButton = document.getElementById('stop-video'); // 使用正确的ID
 const screenButton = document.getElementById('screen-button');
 // const screenIcon = document.getElementById('screen-icon'); // 删除，不再需要
@@ -243,12 +241,9 @@ function scrollToBottom() {
  */
 function updateMicIcon() {
     if (micButton) {
+        // 修复：直接更新按钮图标
+        micButton.textContent = isRecording ? 'mic_off' : 'mic';
         micButton.classList.toggle('active', isRecording);
-        // micButton.textContent = isRecording ? 'mic_off' : 'mic'; // 直接修改按钮文本
-        // 原始版本使用 micIcon，这里保持一致
-        if (micIcon) {
-            micIcon.textContent = isRecording ? 'mic_off' : 'mic';
-        }
     }
 }
 
@@ -345,18 +340,18 @@ async function handleMicToggle() {
             updateMicIcon();
         }
     } else {
+        // 修复：确保正确关闭麦克风
         if (audioRecorder && isRecording) {
             audioRecorder.stop();
-            // 关闭音频流
+            // 确保关闭音频流
             if (micStream) {
                 micStream.getTracks().forEach(track => track.stop());
-                micStream = null; // 清空流引用
+                micStream = null;
             }
         }
         isRecording = false;
         logMessage('Microphone stopped', 'system');
         updateMicIcon();
-        // updateAudioVisualizer(0, true); // 移除输入音频可视化
     }
 }
 
@@ -676,11 +671,12 @@ function updateMediaPreviewsDisplay() {
  * @returns {Promise<void>}
  */
 async function handleVideoToggle() {
-    Logger.info('Video toggle clicked, current state:', { isVideoActive, isConnected });
-    
-    localStorage.setItem('video_fps', fpsInput.value);
-
     if (!isVideoActive) {
+        // 开启摄像头逻辑...
+        Logger.info('Video toggle clicked, current state:', { isVideoActive, isConnected });
+        
+        localStorage.setItem('video_fps', fpsInput.value);
+
         try {
             // 显示预览容器
             mediaPreviewsContainer.style.display = 'flex';
@@ -703,11 +699,7 @@ async function handleVideoToggle() {
 
             isVideoActive = true;
             cameraButton.classList.add('active');
-            // cameraButton.textContent = 'videocam_off'; // 直接修改按钮文本
-            // 原始版本使用 cameraIcon，这里保持一致
-            if (cameraIcon) {
-                cameraIcon.textContent = 'videocam_off';
-            }
+            cameraButton.textContent = 'videocam_off'; // 直接修改按钮文本
             updateMediaPreviewsDisplay(); // 更新预览显示
             Logger.info('摄像头已启动');
             logMessage('摄像头已启动', 'system');
@@ -718,18 +710,14 @@ async function handleVideoToggle() {
             isVideoActive = false;
             videoManager = null;
             cameraButton.classList.remove('active');
-            // cameraButton.textContent = 'videocam'; // 直接修改按钮文本
-            // 原始版本使用 cameraIcon，这里保持一致
-            if (cameraIcon) {
-                cameraIcon.textContent = 'videocam';
-            }
+            cameraButton.textContent = 'videocam'; // 直接修改按钮文本
             // 错误处理时隐藏预览
             mediaPreviewsContainer.style.display = 'none';
             videoPreviewContainer.style.display = 'none';
             updateMediaPreviewsDisplay(); // 更新预览显示
         }
     } else {
-        Logger.info('停止视频');
+        // 修复：确保能通过控制台按钮关闭摄像头
         stopVideo();
     }
 }
@@ -738,6 +726,13 @@ async function handleVideoToggle() {
  * Stops the video streaming.
  */
 function stopVideo() {
+    // 确保更新状态
+    isVideoActive = false;
+    // 修复：更新控制台按钮状态
+    cameraButton.textContent = 'videocam';
+    cameraButton.classList.remove('active');
+    
+    // 其余关闭逻辑保持不变...
     Logger.info('Stopping video...');
     if (videoManager) {
         videoManager.stop(); // 调用 videoManager 自身的停止方法
@@ -746,13 +741,6 @@ function stopVideo() {
             videoManager.stream.getTracks().forEach(track => track.stop());
         }
         videoManager = null; // 清空 videoManager 引用
-    }
-    isVideoActive = false;
-    cameraButton.classList.remove('active');
-    // cameraButton.textContent = 'videocam'; // 直接修改按钮文本
-    // 原始版本使用 cameraIcon，这里保持一致
-    if (cameraIcon) {
-        cameraIcon.textContent = 'videocam';
     }
     // 停止时隐藏预览
     mediaPreviewsContainer.style.display = 'none';
