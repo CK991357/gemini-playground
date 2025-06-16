@@ -340,18 +340,25 @@ async function handleMicToggle() {
             updateMicIcon();
         }
     } else {
-        // 修复：确保正确关闭麦克风
-        if (audioRecorder && isRecording) {
-            audioRecorder.stop();
-            // 确保关闭音频流
-            if (micStream) {
-                micStream.getTracks().forEach(track => track.stop());
-                micStream = null;
+        try {
+            // 修复：确保正确关闭麦克风
+            if (audioRecorder && isRecording) {
+                audioRecorder.stop();
+                // 确保关闭音频流
+                if (micStream) {
+                    micStream.getTracks().forEach(track => track.stop());
+                    micStream = null;
+                }
             }
+            isRecording = false;
+            logMessage('Microphone stopped', 'system');
+            updateMicIcon();
+        } catch (error) {
+            Logger.error('Microphone stop error:', error);
+            logMessage(`Error stopping microphone: ${error.message}`, 'system');
+            isRecording = false; // 即使出错也要尝试重置状态
+            updateMicIcon();
         }
-        isRecording = false;
-        logMessage('Microphone stopped', 'system');
-        updateMicIcon();
     }
 }
 
@@ -758,19 +765,25 @@ stopVideoButton.addEventListener('click', stopVideo); // 绑定新的停止视�
 const flipCameraButton = document.getElementById('flip-camera');
 
 // 绑定翻转按钮事件（确保在DOM加载完成后执行）
-flipCameraButton.addEventListener('click', async () => {
-    if (videoManager) {
-        try {
-            await videoManager.flipCamera();
-            logMessage('摄像头已翻转', 'system');
-        } catch (error) {
-            logMessage(`翻转摄像头失败: ${error.message}`, 'error');
-            console.error('翻转摄像头失败:', error);
+// 仅在非触屏设备上绑定 click 事件，避免与移动端 touchstart 冲突
+if (!('ontouchstart' in window)) {
+    flipCameraButton.addEventListener('click', async () => {
+        if (videoManager) {
+            flipCameraButton.disabled = true; // 禁用按钮防止重复点击
+            try {
+                await videoManager.flipCamera();
+                logMessage('摄像头已翻转', 'system');
+            } catch (error) {
+                logMessage(`翻转摄像头失败: ${error.message}`, 'error');
+                console.error('翻转摄像头失败:', error);
+            } finally {
+                flipCameraButton.disabled = false; // 重新启用按钮
+            }
+        } else {
+            logMessage('摄像头未激活，无法翻转', 'system');
         }
-    } else {
-        logMessage('摄像头未激活，无法翻转', 'system');
-    }
-});
+    });
+}
 
 cameraButton.disabled = true;
 
@@ -884,19 +897,32 @@ function initMobileHandlers() {
         e.preventDefault();
         if (isConnected) handleScreenShare();
     });
+
+    // 新增：移动端麦克风按钮
+    document.getElementById('mic-button').addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (isConnected) handleMicToggle();
+    });
     
     // 移动端翻转摄像头
-    // 移除此处的事件绑定，因为已移至全局
-    // document.getElementById('flip-camera').addEventListener('touchstart', async (e) => {
-    //     e.preventDefault();
-    //     if (videoManager) {
-    //         try {
-    //             await videoManager.flipCamera();
-    //         } catch (error) {
-    //             logMessage(`翻转摄像头失败: ${error.message}`, 'system');
-    //         }
-    //     }
-    // });
+    document.getElementById('flip-camera').addEventListener('touchstart', async (e) => {
+        e.preventDefault();
+        if (videoManager) {
+            const flipCameraButton = document.getElementById('flip-camera');
+            flipCameraButton.disabled = true; // 禁用按钮防止重复点击
+            try {
+                await videoManager.flipCamera();
+                logMessage('摄像头已翻转', 'system');
+            } catch (error) {
+                logMessage(`翻转摄像头失败: ${error.message}`, 'error');
+                console.error('翻转摄像头失败:', error);
+            } finally {
+                flipCameraButton.disabled = false; // 重新启用按钮
+            }
+        } else {
+            logMessage('摄像头未激活，无法翻转', 'system');
+        }
+    });
 }
 
 // 在 DOMContentLoaded 中调用
