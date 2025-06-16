@@ -502,7 +502,6 @@ body {
     cursor: pointer;
     font-size: 16px;
     transition: background-color 0.3s ease;
-    z-index: 11; /* 确保在 video-controls 上方 */
 }
 
 .close-button:hover {
@@ -720,7 +719,7 @@ body {
     z-index: 10; /* 确保按钮在视频上方 */
 }
 
-.video-controls button { /* 仅影响 video-controls 内部的按钮 */
+.video-controls button {
     background: rgba(0, 0, 0, 0.5);
     color: white;
     border: none;
