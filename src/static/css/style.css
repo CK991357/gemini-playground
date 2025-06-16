@@ -449,21 +449,6 @@ body {
     background-color: var(--danger-color);
 }
 
-/* 全局媒体控制工具栏 */
-.global-media-controls {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 15px;
-    padding: 10px 20px;
-    background-color: var(--surface-color);
-    border-radius: 50px;
-    box-shadow: 0 4px 20px var(--shadow-color);
-    z-index: 100;
-}
-
 /* 新增日志模式样式 */
 .log-mode {
     display: none; /* 默认隐藏 */
@@ -654,24 +639,5 @@ body {
     .text-mode .input-area {
         padding-left: 15px;
         padding-right: 15px;
-    }
-
-    /* 移动端摄像头切换按钮位置调整 */
-    .audio-mode .video-controls {
-        position: relative;
-        bottom: env(safe-area-inset-bottom, 0); /* 考虑安全区域 */
-        z-index: 1000;
-    }
-    
-    #flip-camera {
-        position: absolute;
-        top: -50px; /* 上移按钮位置 */
-        right: 10px;
-    }
-
-    .global-media-controls {
-        bottom: max(20px, env(safe-area-inset-bottom)); /* 考虑安全区域 */
-        padding: 10px;
-        gap: 10px;
     }
 }
