@@ -16,15 +16,15 @@ const logsContainer = document.getElementById('logs-container'); // 用于原始
 const messageHistory = document.getElementById('message-history'); // 用于聊天消息显示
 const messageInput = document.getElementById('message-input');
 const sendButton = document.getElementById('send-button');
-const micButton = document.getElementById('mic-button');
-const micIcon = document.getElementById('mic-icon');
+const micButton = document.getElementById('mic-button'); // 现在指向全局按钮
+const micIcon = micButton.querySelector('.material-symbols-outlined'); // 从按钮内部获取图标
 const audioVisualizer = document.getElementById('audio-visualizer');
 const connectButton = document.getElementById('connect-button');
-const cameraButton = document.getElementById('camera-button');
-const cameraIcon = document.getElementById('camera-icon');
-const stopVideoButton = document.getElementById('stop-video');
-const screenButton = document.getElementById('screen-button');
-const screenIcon = document.getElementById('screen-icon');
+const cameraButton = document.getElementById('camera-button'); // 现在指向全局按钮
+const cameraIcon = cameraButton.querySelector('.material-symbols-outlined'); // 从按钮内部获取图标
+const stopVideoButton = document.getElementById('stop-video'); // 视频容器内的停止按钮
+const screenButton = document.getElementById('screen-button'); // 现在指向全局按钮
+const screenIcon = screenButton.querySelector('.material-symbols-outlined'); // 从按钮内部获取图标
 const screenContainer = document.getElementById('screen-container');
 const screenPreview = document.getElementById('screen-preview');
 const inputAudioVisualizer = document.getElementById('input-audio-visualizer');
@@ -114,28 +114,8 @@ document.addEventListener('DOMContentLoaded', () => {
             tab.classList.add('active');
             document.querySelector(`.chat-container.${mode}-mode`).classList.add('active');
 
-            // 根据模式显示/隐藏相关按钮
-            if (mode === 'text') {
-                micButton.style.display = 'none';
-                cameraButton.style.display = 'none';
-                screenButton.style.display = 'none';
-                stopVideoButton.style.display = 'none'; // 确保视频停止按钮也隐藏
-                // 隐藏视频和屏幕共享容器
-                if (videoManager) {
-                    stopVideo();
-                }
-                if (screenRecorder) {
-                    stopScreenSharing();
-                }
-                screenContainer.style.display = 'none';
-                document.getElementById('video-container').style.display = 'none';
-
-            } else { // audio mode
-                micButton.style.display = 'flex'; // 使用 flex 以便居中图标
-                cameraButton.style.display = 'flex';
-                screenButton.style.display = 'flex';
-                // 视频和屏幕共享容器的显示由各自的 handleVideoToggle 和 handleScreenShare 控制
-            }
+            // 模式切换不再控制媒体按钮的显示/隐藏，因为它们现在是全局的
+            // 也不再强制停止媒体流
         });
     });
 
@@ -233,12 +213,15 @@ function logMessage(message, type = 'system') {
  * Updates the microphone icon based on the recording state.
  */
 function updateMicIcon() {
+    // 这个函数现在由 syncMediaStates 统一管理，可以简化或移除
+    // 但为了兼容性，暂时保留，syncMediaStates 会覆盖其效果
     if (micIcon) { // 添加空值检查
         micIcon.textContent = isRecording ? 'mic_off' : 'mic';
     }
     if (micButton) { // 添加空值检查
         micButton.classList.toggle('active', isRecording); // 使用 active 类控制样式
     }
+    syncMediaStates(); // 状态变化后同步全局按钮
 }
 
 /**
@@ -321,12 +304,12 @@ async function handleMicToggle() {
             isRecording = true;
             Logger.info('Microphone started');
             logMessage('Microphone started', 'system');
-            updateMicIcon();
+            updateMicIcon(); // 调用 updateMicIcon 会触发 syncMediaStates
         } catch (error) {
             Logger.error('Microphone error:', error);
             logMessage(`Error: ${error.message}`, 'system');
             isRecording = false;
-            updateMicIcon();
+            updateMicIcon(); // 调用 updateMicIcon 会触发 syncMediaStates
         }
     } else {
         if (audioRecorder && isRecording) {
@@ -334,7 +317,7 @@ async function handleMicToggle() {
         }
         isRecording = false;
         logMessage('Microphone stopped', 'system');
-        updateMicIcon();
+        updateMicIcon(); // 调用 updateMicIcon 会触发 syncMediaStates
         updateAudioVisualizer(0, true);
     }
 }
@@ -398,6 +381,7 @@ async function connectToWebsocket() {
         screenButton.disabled = false;
         logMessage('已连接到 Gemini 2.0 Flash 多模态实时 API', 'system');
         updateConnectionStatus(); // 更新连接状态显示
+        syncMediaStates(); // 连接成功后同步全局按钮状态
     } catch (error) {
         const errorMessage = error.message || '未知错误';
         Logger.error('连接错误:', error);
@@ -411,6 +395,7 @@ async function connectToWebsocket() {
         cameraButton.disabled = true;
         screenButton.disabled = true;
         updateConnectionStatus(); // 更新连接状态显示
+        syncMediaStates(); // 连接失败后同步全局按钮状态
     }
 }
 
@@ -438,7 +423,9 @@ function disconnectFromWebsocket() {
     if (screenButton) screenButton.disabled = true; // 添加空值检查
     logMessage('已从服务器断开连接', 'system');
     updateConnectionStatus(); // 更新连接状态显示
+    syncMediaStates(); // 断开连接后同步全局按钮状态
     
+    // 确保断开连接时停止所有媒体流
     if (videoManager) {
         stopVideo();
     }
@@ -622,7 +609,7 @@ async function handleVideoToggle() {
             document.getElementById('video-container').style.display = 'block'; // 显示视频容器
             Logger.info('摄像头已启动');
             logMessage('摄像头已启动', 'system');
-
+            syncMediaStates(); // 状态变化后同步全局按钮
         } catch (error) {
             Logger.error('摄像头错误:', error);
             logMessage(`错误: ${error.message}`, 'system');
@@ -631,6 +618,7 @@ async function handleVideoToggle() {
             cameraIcon.textContent = 'videocam';
             cameraButton.classList.remove('active');
             document.getElementById('video-container').style.display = 'none'; // 隐藏视频容器
+            syncMediaStates(); // 状态变化后同步全局按钮
         }
     } else {
         Logger.info('停止视频');
@@ -651,6 +639,7 @@ function stopVideo() {
     cameraButton.classList.remove('active');
     document.getElementById('video-container').style.display = 'none'; // 隐藏视频容器
     logMessage('摄像头已停止', 'system');
+    syncMediaStates(); // 状态变化后同步全局按钮
 }
 
 cameraButton.addEventListener('click', () => {
@@ -705,7 +694,7 @@ async function handleScreenShare() {
             screenButton.classList.add('active');
             Logger.info('屏幕共享已启动');
             logMessage('屏幕共享已启动', 'system');
-
+            syncMediaStates(); // 状态变化后同步全局按钮
         } catch (error) {
             Logger.error('屏幕共享错误:', error);
             logMessage(`错误: ${error.message}`, 'system');
@@ -713,6 +702,7 @@ async function handleScreenShare() {
             screenIcon.textContent = 'screen_share';
             screenButton.classList.remove('active');
             screenContainer.style.display = 'none';
+            syncMediaStates(); // 状态变化后同步全局按钮
         }
     } else {
         stopScreenSharing();
@@ -732,6 +722,7 @@ function stopScreenSharing() {
     screenButton.classList.remove('active');
     screenContainer.style.display = 'none';
     logMessage('屏幕共享已停止', 'system');
+    syncMediaStates(); // 状态变化后同步全局按钮
 }
 
 screenButton.addEventListener('click', () => {
