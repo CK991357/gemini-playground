@@ -22,7 +22,7 @@ const audioVisualizer = document.getElementById('audio-visualizer'); // 保持�
 const connectButton = document.getElementById('connect-button');
 const cameraButton = document.getElementById('camera-button');
 // const cameraIcon = document.getElementById('camera-icon'); // 删除，不再需要
-const stopVideoButton = document.getElementById('stop-video-button'); // 更新 ID
+const stopVideoButton = document.getElementById('stop-video'); // 使用正确的ID
 const screenButton = document.getElementById('screen-button');
 // const screenIcon = document.getElementById('screen-icon'); // 删除，不再需要
 const screenContainer = document.getElementById('screen-preview-container'); // 更新 ID
@@ -727,6 +727,7 @@ async function handleVideoToggle() {
  * Stops the video streaming.
  */
 function stopVideo() {
+    Logger.info('Stopping video...');
     if (videoManager) {
         videoManager.stop();
         videoManager = null;
@@ -759,6 +760,7 @@ cameraButton.disabled = true;
 async function handleScreenShare() {
     if (!isScreenSharing) {
         try {
+            Logger.info('Starting screen sharing...'); // 添加日志
             // 显示预览容器
             mediaPreviewsContainer.style.display = 'flex';
             screenContainer.style.display = 'block';
@@ -769,14 +771,16 @@ async function handleScreenShare() {
                 let lastFunc;
                 let lastRan;
                 return function() {
+                    const context = this;
+                    const args = arguments;
                     if (!lastRan) {
-                        func.apply(this, arguments);
+                        func.apply(context, args);
                         lastRan = Date.now();
                     } else {
                         clearTimeout(lastFunc);
-                        lastFunc = setTimeout(() => {
+                        lastFunc = setTimeout(function() {
                             if ((Date.now() - lastRan) >= limit) {
-                                func.apply(this, arguments);
+                                func.apply(context, args);
                                 lastRan = Date.now();
                             }
                         }, limit - (Date.now() - lastRan));
@@ -795,12 +799,9 @@ async function handleScreenShare() {
             await screenRecorder.start(screenPreview, throttledSendFrame);
 
             isScreenSharing = true;
+            // 修改按钮状态
+            screenButton.textContent = 'stop_screen_share';
             screenButton.classList.add('active');
-            // screenButton.textContent = 'stop_screen_share'; // 直接修改按钮文本
-            // 原始版本使用 screenIcon，这里保持一致
-            if (screenIcon) {
-                screenIcon.textContent = 'stop_screen_share';
-            }
             updateMediaPreviewsDisplay(); // 更新预览显示
             Logger.info('屏幕共享已启动');
             logMessage('屏幕共享已启动', 'system');
@@ -808,14 +809,10 @@ async function handleScreenShare() {
         } catch (error) {
             Logger.error('屏幕共享错误:', error);
             logMessage(`错误: ${error.message}`, 'system');
+            // 确保错误时重置状态
             isScreenSharing = false;
             screenButton.classList.remove('active');
-            // screenButton.textContent = 'screen_share'; // 直接修改按钮文本
-            // 原始版本使用 screenIcon，这里保持一致
-            if (screenIcon) {
-                screenIcon.textContent = 'screen_share';
-            }
-            // 错误处理时隐藏预览
+            screenButton.textContent = 'screen_share';
             mediaPreviewsContainer.style.display = 'none';
             screenContainer.style.display = 'none';
             updateMediaPreviewsDisplay(); // 更新预览显示
