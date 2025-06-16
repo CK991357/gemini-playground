@@ -81,23 +81,23 @@
                     <button class="tab" data-mode="log">📋 系统日志</button>
                 </div>
 
-                <!-- 在文字聊天区添加媒体控制按钮 -->
                 <section class="chat-container text-mode active">
-                    <div class="message-history" id="message-history">
-                        <!-- 聊天消息将动态插入此处 -->
+                  <div class="media-previews" id="media-previews">
+                    <div id="video-container" class="media-preview">
+                      <video id="preview" playsinline autoplay muted></video>
+                      <button id="stop-video" class="close-button material-symbols-outlined">close</button>
                     </div>
-                    
-                    <!-- 新增媒体预览容器，放置在聊天历史上方，以便浮动 -->
-                    <div class="media-previews" id="media-previews">
-                        <div id="video-container" class="media-preview">
-                            <video id="preview" playsinline autoplay muted></video>
-                            <button id="stop-video" class="close-button material-symbols-outlined">close</button>
-                        </div>
-                        <div id="screen-preview-container" class="media-preview">
-                            <video id="screen-preview-element" playsinline autoplay muted></video>
-                            <button id="stop-screen-button" class="close-button material-symbols-outlined">close</button>
-                        </div>
+                    <div id="screen-preview-container" class="media-preview">
+                      <video id="screen-preview-element" playsinline autoplay muted></video>
+                      <button id="stop-screen-button" class="close-button material-symbols-outlined">close</button>
                     </div>
+                  </div>
+                  
+                  <div class="message-history" id="message-history">
+                    <!-- 聊天消息动态插入 -->
+                  </div>
+                  
+                  <!-- 输入区域保持不变 -->
 
                     <div class="input-area">
                         <input type="text" id="message-input" placeholder="输入消息...">

@@ -250,32 +250,72 @@ body {
     position: relative; /* 确保内部元素可以相对定位 */
 }
 
+/* 移动端导航栏布局优化 */
 @media (max-width: 768px) {
-    .app-nav .media-controls {
-        /* 移除 display: none; */
-        flex-wrap: wrap; /* 允许按钮换行 */
-        justify-content: flex-end; /* 靠右对齐 */
-        gap: 5px; /* 调整按钮间距 */
-        margin-left: 5px; /* 调整左侧边距 */
-        padding-left: 5px; /* 调整左侧内边距 */
-        border-left: none; /* 移除左侧边框 */
-    }
-    
-    /* 移动端显示简化的媒体控制 */
-    .mobile-media-controls {
-        display: flex;
-        justify-content: center;
-        gap: 10px;
-        padding: 10px 0;
-    }
+  .app-nav {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .nav-tools {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
+    margin-top: 10px;
+  }
+  
+  /* 媒体控制按钮单独一行 */
+  .media-controls {
+    grid-column: span 4;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
+    margin-top: 5px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-color);
+  }
+  
+  /* 连接按钮全宽 */
+  #mobile-connect {
+    grid-column: span 4;
+    margin-top: 10px;
+  }
+  
+  /* 调整图标按钮大小 */
+  .nav-tools > button,
+  .media-controls > button {
+    width: 100%;
+    height: 40px;
+    font-size: 20px;
+  }
 }
 
-/* 修改消息历史区域样式 */
-.message-history {
-    overflow-y: auto;
-    scroll-behavior: smooth;
-    flex-grow: 1;
-    padding-bottom: 80px; /* 为输入框留出空间 */
+/* 媒体预览容器优化 */
+.media-previews {
+  position: absolute;
+  bottom: 80px; /* 在输入框上方 */
+  right: 10px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.media-preview {
+  width: 150px;
+  height: 100px;
+  background: var(--surface-color);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  position: relative;
+}
+
+.media-preview video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .chat-container.active {

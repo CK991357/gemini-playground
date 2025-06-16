@@ -675,6 +675,10 @@ async function handleVideoToggle() {
 
     if (!isVideoActive) {
         try {
+            // 显示预览容器
+            mediaPreviewsContainer.style.display = 'flex';
+            videoPreviewContainer.style.display = 'block';
+
             Logger.info('Attempting to start video');
             if (!videoManager) {
                 videoManager = new VideoManager(); // 恢复为无参数构造
@@ -708,6 +712,9 @@ async function handleVideoToggle() {
             if (cameraIcon) {
                 cameraIcon.textContent = 'videocam';
             }
+            // 错误处理时隐藏预览
+            mediaPreviewsContainer.style.display = 'none';
+            videoPreviewContainer.style.display = 'none';
             updateMediaPreviewsDisplay(); // 更新预览显示
         }
     } else {
@@ -731,6 +738,9 @@ function stopVideo() {
     if (cameraIcon) {
         cameraIcon.textContent = 'videocam';
     }
+    // 停止时隐藏预览
+    mediaPreviewsContainer.style.display = 'none';
+    videoPreviewContainer.style.display = 'none';
     updateMediaPreviewsDisplay(); // 更新预览显示
     logMessage('摄像头已停止', 'system');
 }
@@ -749,6 +759,10 @@ cameraButton.disabled = true;
 async function handleScreenShare() {
     if (!isScreenSharing) {
         try {
+            // 显示预览容器
+            mediaPreviewsContainer.style.display = 'flex';
+            screenContainer.style.display = 'block';
+
             screenRecorder = new ScreenRecorder();
             // 性能优化：添加帧节流
             const throttle = (func, limit) => {
@@ -801,6 +815,9 @@ async function handleScreenShare() {
             if (screenIcon) {
                 screenIcon.textContent = 'screen_share';
             }
+            // 错误处理时隐藏预览
+            mediaPreviewsContainer.style.display = 'none';
+            screenContainer.style.display = 'none';
             updateMediaPreviewsDisplay(); // 更新预览显示
         }
     } else {
@@ -823,6 +840,9 @@ function stopScreenSharing() {
     if (screenIcon) {
         screenIcon.textContent = 'screen_share';
     }
+    // 停止时隐藏预览
+    mediaPreviewsContainer.style.display = 'none';
+    screenContainer.style.display = 'none';
     updateMediaPreviewsDisplay(); // 更新预览显示
     logMessage('屏幕共享已停止', 'system');
 }
@@ -833,4 +853,42 @@ screenButton.addEventListener('click', () => {
 stopScreenButton.addEventListener('click', stopScreenSharing); // 绑定新的停止屏幕共享按钮
 
 screenButton.disabled = true;
-  
+
+/**
+ * Initializes mobile-specific event handlers.
+ */
+function initMobileHandlers() {
+    // 移动端摄像头按钮
+    document.getElementById('camera-button').addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (isConnected) handleVideoToggle();
+    });
+    
+    // 移动端屏幕共享按钮
+    document.getElementById('screen-button').addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (isConnected) handleScreenShare();
+    });
+    
+    // 移动端翻转摄像头
+    document.getElementById('flip-camera').addEventListener('touchstart', async (e) => {
+        e.preventDefault();
+        if (videoManager) {
+            try {
+                await videoManager.flipCamera();
+            } catch (error) {
+                logMessage(`翻转摄像头失败: ${error.message}`, 'system');
+            }
+        }
+    });
+}
+
+// 在 DOMContentLoaded 中调用
+document.addEventListener('DOMContentLoaded', () => {
+    // ... 原有代码 ...
+    
+    // 添加移动端事件处理
+    if ('ontouchstart' in window) {
+        initMobileHandlers();
+    }
+});
