@@ -250,6 +250,28 @@ body {
     position: relative; /* 确保内部元素可以相对定位 */
 }
 
+@media (max-width: 768px) {
+    .app-nav .media-controls {
+        display: none;
+    }
+    
+    /* 移动端显示简化的媒体控制 */
+    .mobile-media-controls {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        padding: 10px 0;
+    }
+}
+
+/* 修改消息历史区域样式 */
+.message-history {
+    overflow-y: auto;
+    scroll-behavior: smooth;
+    flex-grow: 1;
+    padding-bottom: 80px; /* 为输入框留出空间 */
+}
+
 .chat-container.active {
     display: flex; /* 激活时显示为 flex 容器 */
 }

@@ -1,6 +1,6 @@
+import { ApplicationError, ErrorCodes } from '../utils/error-boundary.js';
 import { Logger } from '../utils/logger.js';
 import { VideoRecorder } from './video-recorder.js';
-import { ApplicationError, ErrorCodes } from '../utils/error-boundary.js';
 
 /**
  * @fileoverview Manages video capture and processing with motion detection and frame preview.
@@ -15,18 +15,25 @@ export class VideoManager {
      * Creates a new VideoManager instance
      * @constructor
      */
-    constructor() {
-        // Add at the start of constructor
-        if (!document.getElementById('video-container')) {
+    /**
+     * Creates a new VideoManager instance
+     * @constructor
+     * @param {HTMLElement} videoContainerElement - The DOM element to contain the video preview.
+     * @param {HTMLVideoElement} previewVideoElement - The video element for camera preview.
+     * @param {HTMLButtonElement} stopVideoButtonElement - The button to stop video.
+     * @param {HTMLButtonElement} flipCameraButtonElement - The button to flip camera.
+     */
+    constructor(videoContainerElement, previewVideoElement, stopVideoButtonElement, flipCameraButtonElement) {
+        if (!videoContainerElement || !previewVideoElement || !stopVideoButtonElement || !flipCameraButtonElement) {
             throw new ApplicationError(
-                'Video container element not found',
-                ErrorCodes.INVALID_STATE
+                'Required video elements are missing',
+                ErrorCodes.INVALID_ARGUMENT
             );
         }
         // DOM elements
-        this.videoContainer = document.getElementById('video-container');
-        this.previewVideo = document.getElementById('preview');
-        this.stopVideoButton = document.getElementById('stop-video');
+        this.videoContainer = videoContainerElement;
+        this.previewVideo = previewVideoElement;
+        this.stopVideoButton = stopVideoButtonElement;
         this.framePreview = document.createElement('canvas');
         
         // State management
@@ -49,16 +56,13 @@ export class VideoManager {
         this.onFrame = null;
         this.fps = null;
         
-        // 获取翻转按钮元素并添加事件监听
-        this.flipCameraButton = document.getElementById('flip-camera');
-        if (!this.flipCameraButton) {
-            throw new ApplicationError(
-                'Flip camera button element not found',
-                ErrorCodes.INVALID_STATE
-            );
-        }
+        // 摄像头状态，用户切换镜头
+        this.facingMode = 'user';
+        this.onFrame = null;
+        this.fps = null;
         
-        // 在构造函数中直接绑定事件
+        // 翻转按钮事件监听
+        this.flipCameraButton = flipCameraButtonElement;
         this.flipCameraButton.addEventListener('click', async () => {
             try {
                 await this.flipCamera();
@@ -122,9 +126,10 @@ export class VideoManager {
 
     /**
      * Starts video capture and processing
-     * @param {Function} onFrame - Callback for processed frames
-     * @returns {Promise<boolean>} Success status
-     * @throws {ApplicationError} If video capture fails
+     * @param {number} fps - Frames per second for video capture.
+     * @param {Function} onFrame - Callback for processed frames.
+     * @returns {Promise<boolean>} Success status.
+     * @throws {ApplicationError} If video capture fails.
      */
     async start(fps, onFrame) {
         try {

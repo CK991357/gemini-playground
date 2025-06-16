@@ -215,8 +215,10 @@ function logMessage(message, type = 'system') {
         messageDiv.appendChild(avatarDiv);
         messageDiv.appendChild(contentDiv);
         messageHistory.appendChild(messageDiv);
-        // 确保在浏览器下一次重绘前滚动到底部
-        setTimeout(scrollToBottom, 50); // 使用 setTimeout 确保 DOM 更新完成
+        // 使用requestAnimationFrame确保在渲染后滚动
+        requestAnimationFrame(() => {
+            scrollToBottom();
+        });
     }
 }
 
@@ -225,10 +227,14 @@ function logMessage(message, type = 'system') {
  */
 function scrollToBottom() {
     const messageHistory = document.getElementById('message-history');
-    messageHistory.scrollTo({
-        top: messageHistory.scrollHeight,
-        behavior: 'smooth'
-    });
+    // 使用更可靠的滚动方式
+    messageHistory.scrollTop = messageHistory.scrollHeight;
+    
+    // 添加边界检查
+    const isAtBottom = messageHistory.scrollHeight - messageHistory.clientHeight <= messageHistory.scrollTop + 1;
+    if (!isAtBottom) {
+        messageHistory.scrollTop = messageHistory.scrollHeight;
+    }
 }
 
 /**
@@ -667,10 +673,15 @@ async function handleVideoToggle() {
         try {
             Logger.info('Attempting to start video');
             if (!videoManager) {
-                videoManager = new VideoManager();
+                videoManager = new VideoManager(
+                    videoPreviewContainer, // videoContainerElement
+                    videoPreviewElement,   // previewVideoElement
+                    stopVideoButton,       // stopVideoButtonElement
+                    flipCameraButton       // flipCameraButtonElement
+                );
             }
             
-            await videoManager.start(videoPreviewElement, fpsInput.value,(frameData) => { // 传递 video 元素
+            await videoManager.start(fpsInput.value,(frameData) => {
                 if (isConnected) {
                     client.sendRealtimeInput([frameData]);
                 }
