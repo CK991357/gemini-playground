@@ -70,22 +70,42 @@
                 <!-- 模式切换选项卡 -->
                 <div class="mode-tabs">
                     <button class="tab active" data-mode="text">📝 文字聊天</button>
-                    <button class="tab" data-mode="audio">🎙️ 音频聊天</button>
+                    <!-- <button class="tab" data-mode="audio">🎙️ 音频聊天</button> 删除此行 -->
                     <button class="tab" data-mode="log">📋 系统日志</button>
                 </div>
 
-                <!-- 文字聊天区 -->
+                <!-- 在文字聊天区添加媒体控制按钮 -->
                 <section class="chat-container text-mode active">
                     <div class="message-history" id="message-history">
                         <!-- 聊天消息将动态插入此处 -->
                     </div>
+                    
+                    <!-- 新增媒体预览容器，放置在聊天历史上方，以便浮动 -->
+                    <div class="media-previews" id="media-previews">
+                        <div id="video-preview-container" class="media-preview">
+                            <video id="video-preview-element" playsinline autoplay muted></video>
+                            <button id="stop-video-button" class="close-button material-symbols-outlined">close</button>
+                        </div>
+                        <div id="screen-preview-container" class="media-preview">
+                            <video id="screen-preview-element" playsinline autoplay muted></video>
+                            <button id="stop-screen-button" class="close-button material-symbols-outlined">close</button>
+                        </div>
+                    </div>
+
                     <div class="input-area">
                         <input type="text" id="message-input" placeholder="输入消息...">
                         <button id="send-button" class="send-button material-symbols-outlined">send</button>
                     </div>
+                    
+                    <!-- 新增媒体控制区域 -->
+                    <div class="media-controls">
+                        <button id="mic-button" class="media-button material-symbols-outlined">mic</button>
+                        <button id="camera-button" class="media-button material-symbols-outlined">videocam</button>
+                        <button id="screen-button" class="media-button material-symbols-outlined">screen_share</button>
+                    </div>
                 </section>
 
-                <!-- 系统日志区 -->
+                <!-- 系统日志区 (保持不变) -->
                 <section class="chat-container log-mode">
                     <div class="log-header">
                         <h3>系统日志</h3>
@@ -96,7 +116,8 @@
                     </div>
                 </section>
 
-                <!-- 音频聊天区 -->
+                <!-- 删除整个音频聊天区 -->
+                <!--
                 <section class="chat-container audio-mode">
                     <div class="audio-visualization">
                         <label>输入音频</label>
@@ -123,6 +144,7 @@
                         <button id="screen-button" class="action-button material-symbols-outlined">screen_share</button>
                     </div>
                 </section>
+                -->
             </div>
         </div>
 

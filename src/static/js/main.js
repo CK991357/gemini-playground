@@ -17,35 +17,41 @@ const messageHistory = document.getElementById('message-history'); // 用于聊�
 const messageInput = document.getElementById('message-input');
 const sendButton = document.getElementById('send-button');
 const micButton = document.getElementById('mic-button');
-const micIcon = document.getElementById('mic-icon');
-const audioVisualizer = document.getElementById('audio-visualizer');
+// const micIcon = document.getElementById('mic-icon'); // 删除，不再需要
+const audioVisualizer = document.getElementById('audio-visualizer'); // 保持，虽然音频模式删除，但可能用于其他音频可视化
 const connectButton = document.getElementById('connect-button');
 const cameraButton = document.getElementById('camera-button');
-const cameraIcon = document.getElementById('camera-icon');
-const stopVideoButton = document.getElementById('stop-video');
+// const cameraIcon = document.getElementById('camera-icon'); // 删除，不再需要
+const stopVideoButton = document.getElementById('stop-video-button'); // 更新 ID
 const screenButton = document.getElementById('screen-button');
-const screenIcon = document.getElementById('screen-icon');
-const screenContainer = document.getElementById('screen-container');
-const screenPreview = document.getElementById('screen-preview');
-const inputAudioVisualizer = document.getElementById('input-audio-visualizer');
+// const screenIcon = document.getElementById('screen-icon'); // 删除，不再需要
+const screenContainer = document.getElementById('screen-preview-container'); // 更新 ID
+const screenPreview = document.getElementById('screen-preview-element'); // 更新 ID
+const inputAudioVisualizer = document.getElementById('input-audio-visualizer'); // 保持，可能用于输入音频可视化
 const apiKeyInput = document.getElementById('api-key');
 const voiceSelect = document.getElementById('voice-select');
 const fpsInput = document.getElementById('fps-input');
-const configToggle = document.getElementById('toggle-config'); // 对应新的 toggle-config 按钮
-const configContainer = document.querySelector('.control-panel'); // 对应新的 control-panel
+const configToggle = document.getElementById('toggle-config');
+const configContainer = document.querySelector('.control-panel');
 const systemInstructionInput = document.getElementById('system-instruction');
 systemInstructionInput.value = CONFIG.SYSTEM_INSTRUCTION.TEXT;
 const applyConfigButton = document.getElementById('apply-config');
 const responseTypeSelect = document.getElementById('response-type-select');
-const mobileConnectButton = document.getElementById('mobile-connect'); // 新增移动端连接按钮
+const mobileConnectButton = document.getElementById('mobile-connect');
 
 // 新增的 DOM 元素
 const themeToggleBtn = document.getElementById('theme-toggle');
 const toggleLogBtn = document.getElementById('toggle-log');
-const logPanel = document.querySelector('.chat-container.log-mode'); // 修正日志面板选择器
+const logPanel = document.querySelector('.chat-container.log-mode');
 const clearLogsBtn = document.getElementById('clear-logs');
 const modeTabs = document.querySelectorAll('.mode-tabs .tab');
 const chatContainers = document.querySelectorAll('.chat-container');
+
+// 新增媒体预览相关 DOM 元素
+const mediaPreviewsContainer = document.getElementById('media-previews');
+const videoPreviewContainer = document.getElementById('video-preview-container');
+const videoPreviewElement = document.getElementById('video-preview-element');
+const stopScreenButton = document.getElementById('stop-screen-button'); // 新增停止屏幕共享按钮
 
 // Load saved values from localStorage
 const savedApiKey = localStorage.getItem('gemini_api_key');
@@ -101,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 2. 模式切换逻辑 (文字聊天/音频聊天)
+    // 2. 模式切换逻辑 (文字聊天/系统日志)
     modeTabs.forEach(tab => {
         tab.addEventListener('click', () => {
             const mode = tab.dataset.mode;
@@ -114,28 +120,15 @@ document.addEventListener('DOMContentLoaded', () => {
             tab.classList.add('active');
             document.querySelector(`.chat-container.${mode}-mode`).classList.add('active');
 
-            // 根据模式显示/隐藏相关按钮
-            if (mode === 'text') {
-                micButton.style.display = 'none';
-                cameraButton.style.display = 'none';
-                screenButton.style.display = 'none';
-                stopVideoButton.style.display = 'none'; // 确保视频停止按钮也隐藏
-                // 隐藏视频和屏幕共享容器
-                if (videoManager) {
-                    stopVideo();
-                }
-                if (screenRecorder) {
-                    stopScreenSharing();
-                }
-                screenContainer.style.display = 'none';
-                document.getElementById('video-container').style.display = 'none';
-
-            } else { // audio mode
-                micButton.style.display = 'flex'; // 使用 flex 以便居中图标
-                cameraButton.style.display = 'flex';
-                screenButton.style.display = 'flex';
-                // 视频和屏幕共享容器的显示由各自的 handleVideoToggle 和 handleScreenShare 控制
+            // 确保在切换模式时停止所有媒体流
+            if (videoManager) {
+                stopVideo();
             }
+            if (screenRecorder) {
+                stopScreenSharing();
+            }
+            // 媒体预览容器的显示由 isVideoActive 或 isScreenSharing 状态控制
+            updateMediaPreviewsDisplay();
         });
     });
 
@@ -223,21 +216,28 @@ function logMessage(message, type = 'system') {
         messageDiv.appendChild(contentDiv);
         messageHistory.appendChild(messageDiv);
         // 确保在浏览器下一次重绘前滚动到底部
-        requestAnimationFrame(() => {
-            messageHistory.scrollTop = messageHistory.scrollHeight;
-        });
+        setTimeout(scrollToBottom, 50); // 使用 setTimeout 确保 DOM 更新完成
     }
+}
+
+/**
+ * Scrolls the message history to the bottom.
+ */
+function scrollToBottom() {
+    const messageHistory = document.getElementById('message-history');
+    messageHistory.scrollTo({
+        top: messageHistory.scrollHeight,
+        behavior: 'smooth'
+    });
 }
 
 /**
  * Updates the microphone icon based on the recording state.
  */
 function updateMicIcon() {
-    if (micIcon) { // 添加空值检查
-        micIcon.textContent = isRecording ? 'mic_off' : 'mic';
-    }
-    if (micButton) { // 添加空值检查
-        micButton.classList.toggle('active', isRecording); // 使用 active 类控制样式
+    if (micButton) {
+        micButton.classList.toggle('active', isRecording);
+        micButton.textContent = isRecording ? 'mic_off' : 'mic'; // 直接修改按钮文本
     }
 }
 
@@ -247,20 +247,22 @@ function updateMicIcon() {
  * @param {boolean} [isInput=false] - Whether the visualizer is for input audio.
  */
 function updateAudioVisualizer(volume, isInput = false) {
-    const visualizer = isInput ? inputAudioVisualizer : audioVisualizer;
-    const audioBar = visualizer.querySelector('.audio-bar') || document.createElement('div');
+    // 移除音频可视化，因为音频模式已删除，且在文字模式下不需要实时显示音频波形
+    // 如果未来需要，可以考虑在其他地方重新引入
+    // const visualizer = isInput ? inputAudioVisualizer : audioVisualizer;
+    // const audioBar = visualizer.querySelector('.audio-bar') || document.createElement('div');
     
-    if (!visualizer.contains(audioBar)) {
-        audioBar.classList.add('audio-bar');
-        visualizer.appendChild(audioBar);
-    }
+    // if (!visualizer.contains(audioBar)) {
+    //     audioBar.classList.add('audio-bar');
+    //     visualizer.appendChild(audioBar);
+    // }
     
-    audioBar.style.width = `${volume * 100}%`;
-    if (volume > 0) {
-        audioBar.classList.add('active');
-    } else {
-        audioBar.classList.remove('active');
-    }
+    // audioBar.style.width = `${volume * 100}%`;
+    // if (volume > 0) {
+    //     audioBar.classList.add('active');
+    // } else {
+    //     audioBar.classList.remove('active');
+    // }
 }
 
 /**
@@ -273,9 +275,10 @@ async function ensureAudioInitialized() {
     }
     if (!audioStreamer) {
         audioStreamer = new AudioStreamer(audioCtx);
-        await audioStreamer.addWorklet('vumeter-out', 'js/audio/worklets/vol-meter.js', (ev) => {
-            updateAudioVisualizer(ev.data.volume);
-        });
+        // 移除音频输出可视化，因为音频模式已删除
+        // await audioStreamer.addWorklet('vumeter-out', 'js/audio/worklets/vol-meter.js', (ev) => {
+        //     updateAudioVisualizer(ev.data.volume);
+        // });
     }
     return audioStreamer;
 }
@@ -308,9 +311,10 @@ async function handleMicToggle() {
                     }]);
                 }
                 
-                inputAnalyser.getByteFrequencyData(inputDataArray);
-                const inputVolume = Math.max(...inputDataArray) / 255;
-                updateAudioVisualizer(inputVolume, true);
+                // 移除输入音频可视化
+                // inputAnalyser.getByteFrequencyData(inputDataArray);
+                // const inputVolume = Math.max(...inputDataArray) / 255;
+                // updateAudioVisualizer(inputVolume, true);
             });
 
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -335,7 +339,7 @@ async function handleMicToggle() {
         isRecording = false;
         logMessage('Microphone stopped', 'system');
         updateMicIcon();
-        updateAudioVisualizer(0, true);
+        // updateAudioVisualizer(0, true); // 移除输入音频可视化
     }
 }
 
@@ -392,12 +396,12 @@ async function connectToWebsocket() {
         connectButton.classList.add('connected');
         messageInput.disabled = false;
         sendButton.disabled = false;
-        // 启用音频模式按钮
+        // 启用媒体按钮
         micButton.disabled = false;
         cameraButton.disabled = false;
         screenButton.disabled = false;
         logMessage('已连接到 Gemini 2.0 Flash 多模态实时 API', 'system');
-        updateConnectionStatus(); // 更新连接状态显示
+        updateConnectionStatus();
     } catch (error) {
         const errorMessage = error.message || '未知错误';
         Logger.error('连接错误:', error);
@@ -410,7 +414,15 @@ async function connectToWebsocket() {
         micButton.disabled = true;
         cameraButton.disabled = true;
         screenButton.disabled = true;
-        updateConnectionStatus(); // 更新连接状态显示
+        updateConnectionStatus();
+        
+        if (videoManager) {
+            stopVideo();
+        }
+        
+        if (screenRecorder) {
+            stopScreenSharing();
+        }
     }
 }
 
@@ -433,11 +445,11 @@ function disconnectFromWebsocket() {
     connectButton.classList.remove('connected');
     messageInput.disabled = true;
     sendButton.disabled = true;
-    if (micButton) micButton.disabled = true; // 添加空值检查
-    if (cameraButton) cameraButton.disabled = true; // 添加空值检查
-    if (screenButton) screenButton.disabled = true; // 添加空值检查
+    if (micButton) micButton.disabled = true;
+    if (cameraButton) cameraButton.disabled = true;
+    if (screenButton) screenButton.disabled = true;
     logMessage('已从服务器断开连接', 'system');
-    updateConnectionStatus(); // 更新连接状态显示
+    updateConnectionStatus();
     
     if (videoManager) {
         stopVideo();
@@ -492,6 +504,10 @@ client.on('audio', async (data) => {
     }
 });
 
+// 添加消息缓冲机制
+let messageBuffer = '';
+let bufferTimer = null;
+
 client.on('content', (data) => {
     if (data.modelTurn) {
         if (data.modelTurn.parts.some(part => part.functionCall)) {
@@ -503,8 +519,21 @@ client.on('content', (data) => {
         }
 
         const text = data.modelTurn.parts.map(part => part.text).join('');
+        
         if (text) {
-            logMessage(text, 'ai');
+            // 缓冲消息
+            messageBuffer += text;
+            
+            // 清除现有定时器
+            if (bufferTimer) clearTimeout(bufferTimer);
+            
+            // 设置新定时器
+            bufferTimer = setTimeout(() => {
+                if (messageBuffer.trim()) {
+                    logMessage(messageBuffer, 'ai');
+                    messageBuffer = '';
+                }
+            }, 300); // 300ms缓冲时间
         }
     }
 });
@@ -514,6 +543,11 @@ client.on('interrupted', () => {
     isUsingTool = false;
     Logger.info('Model interrupted');
     logMessage('Model interrupted', 'system');
+    // 确保在中断时也刷新缓冲区
+    if (messageBuffer.trim()) {
+        logMessage(messageBuffer, 'ai');
+        messageBuffer = '';
+    }
 });
 
 client.on('setupcomplete', () => {
@@ -523,6 +557,11 @@ client.on('setupcomplete', () => {
 client.on('turncomplete', () => {
     isUsingTool = false;
     logMessage('Turn complete', 'system');
+    // 在对话结束时刷新缓冲区
+    if (messageBuffer.trim()) {
+        logMessage(messageBuffer, 'ai');
+        messageBuffer = '';
+    }
 });
 
 client.on('error', (error) => {
@@ -567,9 +606,9 @@ connectButton.addEventListener('click', () => {
 
 messageInput.disabled = true;
 sendButton.disabled = true;
-micButton.disabled = true; // 初始禁用，由模式切换控制显示
-cameraButton.disabled = true; // 初始禁用，由模式切换控制显示
-screenButton.disabled = true; // 初始禁用，由模式切换控制显示
+micButton.disabled = true;
+cameraButton.disabled = true;
+screenButton.disabled = true;
 connectButton.textContent = '连接';
 
 // 移动端连接按钮逻辑
@@ -595,6 +634,27 @@ function updateConnectionStatus() {
 updateConnectionStatus(); // 初始更新连接状态
 
 /**
+ * Updates the display of media preview containers.
+ */
+function updateMediaPreviewsDisplay() {
+    if (isVideoActive || isScreenSharing) {
+        mediaPreviewsContainer.style.display = 'flex'; // 使用 flex 布局
+        if (isVideoActive) {
+            videoPreviewContainer.style.display = 'block';
+        } else {
+            videoPreviewContainer.style.display = 'none';
+        }
+        if (isScreenSharing) {
+            screenContainer.style.display = 'block';
+        } else {
+            screenContainer.style.display = 'none';
+        }
+    } else {
+        mediaPreviewsContainer.style.display = 'none';
+    }
+}
+
+/**
  * Handles the video toggle. Starts or stops video streaming.
  * @returns {Promise<void>}
  */
@@ -610,16 +670,16 @@ async function handleVideoToggle() {
                 videoManager = new VideoManager();
             }
             
-            await videoManager.start(fpsInput.value,(frameData) => {
+            await videoManager.start(videoPreviewElement, fpsInput.value,(frameData) => { // 传递 video 元素
                 if (isConnected) {
                     client.sendRealtimeInput([frameData]);
                 }
             });
 
             isVideoActive = true;
-            cameraIcon.textContent = 'videocam_off';
             cameraButton.classList.add('active');
-            document.getElementById('video-container').style.display = 'block'; // 显示视频容器
+            cameraButton.textContent = 'videocam_off'; // 直接修改按钮文本
+            updateMediaPreviewsDisplay(); // 更新预览显示
             Logger.info('摄像头已启动');
             logMessage('摄像头已启动', 'system');
 
@@ -628,9 +688,9 @@ async function handleVideoToggle() {
             logMessage(`错误: ${error.message}`, 'system');
             isVideoActive = false;
             videoManager = null;
-            cameraIcon.textContent = 'videocam';
             cameraButton.classList.remove('active');
-            document.getElementById('video-container').style.display = 'none'; // 隐藏视频容器
+            cameraButton.textContent = 'videocam'; // 直接修改按钮文本
+            updateMediaPreviewsDisplay(); // 更新预览显示
         }
     } else {
         Logger.info('停止视频');
@@ -647,16 +707,16 @@ function stopVideo() {
         videoManager = null;
     }
     isVideoActive = false;
-    cameraIcon.textContent = 'videocam';
     cameraButton.classList.remove('active');
-    document.getElementById('video-container').style.display = 'none'; // 隐藏视频容器
+    cameraButton.textContent = 'videocam'; // 直接修改按钮文本
+    updateMediaPreviewsDisplay(); // 更新预览显示
     logMessage('摄像头已停止', 'system');
 }
 
 cameraButton.addEventListener('click', () => {
     if (isConnected) handleVideoToggle();
 });
-stopVideoButton.addEventListener('click', stopVideo);
+stopVideoButton.addEventListener('click', stopVideo); // 绑定新的停止视频按钮
 
 cameraButton.disabled = true;
 
@@ -667,8 +727,6 @@ cameraButton.disabled = true;
 async function handleScreenShare() {
     if (!isScreenSharing) {
         try {
-            screenContainer.style.display = 'block';
-            
             screenRecorder = new ScreenRecorder();
             // 性能优化：添加帧节流
             const throttle = (func, limit) => {
@@ -701,8 +759,9 @@ async function handleScreenShare() {
             await screenRecorder.start(screenPreview, throttledSendFrame);
 
             isScreenSharing = true;
-            screenIcon.textContent = 'stop_screen_share';
             screenButton.classList.add('active');
+            screenButton.textContent = 'stop_screen_share'; // 直接修改按钮文本
+            updateMediaPreviewsDisplay(); // 更新预览显示
             Logger.info('屏幕共享已启动');
             logMessage('屏幕共享已启动', 'system');
 
@@ -710,9 +769,9 @@ async function handleScreenShare() {
             Logger.error('屏幕共享错误:', error);
             logMessage(`错误: ${error.message}`, 'system');
             isScreenSharing = false;
-            screenIcon.textContent = 'screen_share';
             screenButton.classList.remove('active');
-            screenContainer.style.display = 'none';
+            screenButton.textContent = 'screen_share'; // 直接修改按钮文本
+            updateMediaPreviewsDisplay(); // 更新预览显示
         }
     } else {
         stopScreenSharing();
@@ -728,14 +787,16 @@ function stopScreenSharing() {
         screenRecorder = null;
     }
     isScreenSharing = false;
-    screenIcon.textContent = 'screen_share';
     screenButton.classList.remove('active');
-    screenContainer.style.display = 'none';
+    screenButton.textContent = 'screen_share'; // 直接修改按钮文本
+    updateMediaPreviewsDisplay(); // 更新预览显示
     logMessage('屏幕共享已停止', 'system');
 }
 
 screenButton.addEventListener('click', () => {
     if (isConnected) handleScreenShare();
 });
+stopScreenButton.addEventListener('click', stopScreenSharing); // 绑定新的停止屏幕共享按钮
+
 screenButton.disabled = true;
   
