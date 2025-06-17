@@ -17,7 +17,7 @@ const messageHistory = document.getElementById('message-history'); // 用于聊�
 const messageInput = document.getElementById('message-input');
 const sendButton = document.getElementById('send-button');
 const micButton = document.getElementById('mic-button');
-const _audioVisualizer = document.getElementById('audio-visualizer'); // 保持，虽然音频模式删除，但可能用于其他音频可视化
+const audioVisualizer = document.getElementById('audio-visualizer'); // 保持，虽然音频模式删除，但可能用于其他音频可视化
 const connectButton = document.getElementById('connect-button');
 const cameraButton = document.getElementById('camera-button');
 const stopVideoButton = document.getElementById('stop-video'); // 使用正确的ID
@@ -25,7 +25,7 @@ const screenButton = document.getElementById('screen-button');
 // const screenIcon = document.getElementById('screen-icon'); // 删除，不再需要
 const screenContainer = document.getElementById('screen-preview-container'); // 更新 ID
 const screenPreview = document.getElementById('screen-preview-element'); // 更新 ID
-const _inputAudioVisualizer = document.getElementById('input-audio-visualizer'); // 保持，可能用于输入音频可视化
+const inputAudioVisualizer = document.getElementById('input-audio-visualizer'); // 保持，可能用于输入音频可视化
 const apiKeyInput = document.getElementById('api-key');
 const voiceSelect = document.getElementById('voice-select');
 const fpsInput = document.getElementById('fps-input');
@@ -40,7 +40,7 @@ const mobileConnectButton = document.getElementById('mobile-connect');
 // 新增的 DOM 元素
 const themeToggleBtn = document.getElementById('theme-toggle');
 const toggleLogBtn = document.getElementById('toggle-log');
-const _logPanel = document.querySelector('.chat-container.log-mode');
+const logPanel = document.querySelector('.chat-container.log-mode');
 const clearLogsBtn = document.getElementById('clear-logs');
 const modeTabs = document.querySelectorAll('.mode-tabs .tab');
 const chatContainers = document.querySelectorAll('.chat-container');
@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
         body.classList.add(savedTheme);
         themeToggleBtn.textContent = savedTheme === 'dark-mode' ? 'dark_mode' : 'light_mode';
     } else {
-        if (globalThis.matchMedia && globalThis.matchMedia('(prefers-color-scheme: dark)').matches) {
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
             body.classList.add('dark-mode');
             themeToggleBtn.textContent = 'dark_mode';
         } else {
@@ -149,7 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
         configContainer.classList.toggle('active'); // control-panel 现在是 configContainer
         configToggle.classList.toggle('active');
         // 移动端滚动锁定
-        if (globalThis.innerWidth <= 1200) {
+        if (window.innerWidth <= 1200) {
             document.body.style.overflow = configContainer.classList.contains('active')
                 ? 'hidden' : '';
         }
@@ -159,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
         configContainer.classList.remove('active');
         configToggle.classList.remove('active');
         // 确保关闭设置面板时解除滚动锁定
-        if (globalThis.innerWidth <= 1200) {
+        if (window.innerWidth <= 1200) {
             document.body.style.overflow = '';
         }
     });
@@ -252,24 +252,24 @@ function updateMicIcon() {
  * @param {number} volume - The audio volume (0.0 to 1.0).
  * @param {boolean} [isInput=false] - Whether the visualizer is for input audio.
  */
-// function updateAudioVisualizer(volume, isInput = false) {
-//     // 移除音频可视化，因为音频模式已删除，且在文字模式下不需要实时显示音频波形
-//     // 如果未来需要，可以考虑在其他地方重新引入
-//     // const visualizer = isInput ? inputAudioVisualizer : audioVisualizer;
-//     // const audioBar = visualizer.querySelector('.audio-bar') || document.createElement('div');
-//
-//     // if (!visualizer.contains(audioBar)) {
-//     //     audioBar.classList.add('audio-bar');
-//     //     visualizer.appendChild(audioBar);
-//     // }
-//
-//     // audioBar.style.width = `${volume * 100}%`;
-//     // if (volume > 0) {
-//     //     audioBar.classList.add('active');
-//     // } else {
-//     //     audioBar.classList.remove('active');
-//     // }
-// }
+function updateAudioVisualizer(volume, isInput = false) {
+    // 移除音频可视化，因为音频模式已删除，且在文字模式下不需要实时显示音频波形
+    // 如果未来需要，可以考虑在其他地方重新引入
+    // const visualizer = isInput ? inputAudioVisualizer : audioVisualizer;
+    // const audioBar = visualizer.querySelector('.audio-bar') || document.createElement('div');
+    
+    // if (!visualizer.contains(audioBar)) {
+    //     audioBar.classList.add('audio-bar');
+    //     visualizer.appendChild(audioBar);
+    // }
+    
+    // audioBar.style.width = `${volume * 100}%`;
+    // if (volume > 0) {
+    //     audioBar.classList.add('active');
+    // } else {
+    //     audioBar.classList.remove('active');
+    // }
+}
 
 /**
  * Initializes the audio context and streamer if not already initialized.
@@ -277,26 +277,15 @@ function updateMicIcon() {
  */
 async function ensureAudioInitialized() {
     if (!audioCtx) {
-        const AudioContext = globalThis.AudioContext || globalThis.webkitAudioContext;
         audioCtx = new AudioContext();
-        
-        // 确保在用户交互后恢复音频上下文
-        if (audioCtx.state === 'suspended') {
-            const resumeHandler = async () => {
-                await audioCtx.resume();
-                document.removeEventListener('click', resumeHandler);
-                document.removeEventListener('touchstart', resumeHandler);
-            };
-            
-            document.addEventListener('click', resumeHandler);
-            document.addEventListener('touchstart', resumeHandler);
-        }
     }
-    
     if (!audioStreamer) {
         audioStreamer = new AudioStreamer(audioCtx);
+        // 移除音频输出可视化，因为音频模式已删除
+        // await audioStreamer.addWorklet('vumeter-out', 'js/audio/worklets/vol-meter.js', (ev) => {
+        //     updateAudioVisualizer(ev.data.volume);
+        // });
     }
-    
     return audioStreamer;
 }
 
@@ -307,18 +296,12 @@ async function ensureAudioInitialized() {
 async function handleMicToggle() {
     if (!isRecording) {
         try {
-            // 增加权限状态检查
-            const permissionStatus = await navigator.permissions.query({ name: 'microphone' });
-            if (permissionStatus.state === 'denied') {
-                logMessage('麦克风权限被拒绝，请在浏览器设置中启用', 'system');
-                return;
-            }
             await ensureAudioInitialized();
             audioRecorder = new AudioRecorder();
             
             const inputAnalyser = audioCtx.createAnalyser();
             inputAnalyser.fftSize = 256;
-            const _inputDataArray = new Uint8Array(inputAnalyser.frequencyBinCount); // 重命名为 _inputDataArray
+            const inputDataArray = new Uint8Array(inputAnalyser.frequencyBinCount);
             
             await audioRecorder.start((base64Data) => {
                 if (isUsingTool) {
@@ -335,8 +318,8 @@ async function handleMicToggle() {
                 }
                 
                 // 移除输入音频可视化
-                // inputAnalyser.getByteFrequencyData(_inputDataArray); // 使用重命名后的变量
-                // const inputVolume = Math.max(..._inputDataArray) / 255;
+                // inputAnalyser.getByteFrequencyData(inputDataArray);
+                // const inputVolume = Math.max(...inputDataArray) / 255;
                 // updateAudioVisualizer(inputVolume, true);
             });
 
@@ -409,14 +392,14 @@ async function connectToWebsocket() {
         generationConfig: {
             responseModalities: responseTypeSelect.value,
             speechConfig: {
-                voiceConfig: {
-                    prebuiltVoiceConfig: {
-                        voiceName: voiceSelect.value
+                voiceConfig: { 
+                    prebuiltVoiceConfig: { 
+                        voiceName: voiceSelect.value    // You can change voice in the config.js file
                     }
                 }
-            }
-        },
+            },
 
+        },
         systemInstruction: {
             parts: [{
                 text: systemInstructionInput.value     // You can change system instruction in the config.js file
@@ -536,7 +519,7 @@ client.on('audio', async (data) => {
         const streamer = await ensureAudioInitialized();
         streamer.addPCM16(new Uint8Array(data));
     } catch (error) {
-        logMessage(`处理音频时出错: ${error.message}`, 'system');
+        logMessage(`Error processing audio: ${error.message}`, 'system');
     }
 });
 
@@ -610,7 +593,7 @@ client.on('error', (error) => {
 });
 
 // 添加全局错误处理
-globalThis.addEventListener('error', (event) => {
+window.addEventListener('error', (event) => {
     logMessage(`系统错误: ${event.message}`, 'system');
 });
 
@@ -838,7 +821,7 @@ async function handleScreenShare() {
                     }
                 }
             };
-            const throttledSendFrame = throttle((frameData) => { // 移除 no-this-alias 警告，因为这里没有 this 的别名问题
+            const throttledSendFrame = throttle((frameData) => {
                 if (isConnected) {
                     client.sendRealtimeInput([{
                         mimeType: "image/jpeg",
@@ -940,35 +923,6 @@ function initMobileHandlers() {
             logMessage('摄像头未激活，无法翻转', 'system');
         }
     });
-    
-    /**
-     * 检查音频播放状态。
-     */
-    function checkAudioPlayback() {
-        if (audioStreamer && audioStreamer.isPlaying) {
-            logMessage('音频正在播放中...', 'system');
-        } else {
-            logMessage('音频未播放', 'system');
-        }
-    }
-    
-    // 在连接成功后添加检查
-    client.on('setupcomplete', () => {
-        logMessage('Setup complete', 'system');
-        setTimeout(checkAudioPlayback, 1000); // 1秒后检查音频状态
-    });
-    
-    /**
-     * 添加权限检查。
-     */
-    async function checkAudioPermissions() {
-        try {
-            const permission = await navigator.permissions.query({ name: 'speaker' });
-            logMessage(`扬声器权限状态: ${permission.state}`, 'system');
-        } catch (error) {
-            logMessage(`扬声器权限检查失败: ${error.message}`, 'system');
-        }
-    }
 }
 
 // 在 DOMContentLoaded 中调用
@@ -979,51 +933,4 @@ document.addEventListener('DOMContentLoaded', () => {
     if ('ontouchstart' in window) {
         initMobileHandlers();
     }
-
-    // 添加视图缩放阻止
-    document.addEventListener('touchmove', (e) => {
-        if(e.scale !== 1) e.preventDefault();
-    }, { passive: false });
-
-    // 添加浏览器兼容性检测
-    if (!checkBrowserCompatibility()) {
-        // 如果浏览器不兼容，可以禁用某些功能或显示一个全屏警告
-        // 例如：
-        // connectButton.disabled = true;
-        // micButton.disabled = true;
-        // cameraButton.disabled = true;
-        // screenButton.disabled = true;
-        // messageInput.disabled = true;
-        // sendButton.disabled = true;
-        return; // 阻止后续初始化
-    }
 });
-
-/**
- * 检测当前设备是否为移动设备。
- * @returns {boolean} 如果是移动设备则返回 true，否则返回 false。
- */
-function isMobileDevice() {
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-}
-
-/**
- * 检查浏览器兼容性并显示警告。
- * @returns {boolean} 如果浏览器兼容则返回 true，否则返回 false。
- */
-function checkBrowserCompatibility() {
-    const incompatibleBrowsers = [
-        { name: 'Firefox', test: /Firefox/i, supported: false, message: 'Firefox 浏览器可能不支持某些视频功能，建议使用 Chrome 或 Edge。' },
-        { name: '狐猴浏览器', test: /Lemur/i, supported: false, message: '狐猴浏览器可能存在兼容性问题，建议使用 Chrome 或 Edge。' }
-    ];
-    
-    const userAgent = navigator.userAgent;
-    for (const browser of incompatibleBrowsers) {
-        if (browser.test.test(userAgent) && !browser.supported) {
-            logMessage(`警告：您正在使用${browser.name}。${browser.message}`, 'system');
-            // 可以在这里显示一个更明显的 UI 警告
-            return false;
-        }
-    }
-    return true;
-}
