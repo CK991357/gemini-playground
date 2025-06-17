@@ -70,10 +70,18 @@ export class AudioStreamer {
      * @method addPCM16
      * @description Adds a chunk of PCM16 audio data to the streaming queue.
      * @param {Int16Array} chunk - The audio data chunk.
-     */
-    addPCM16(chunk) {
-        const float32Array = new Float32Array(chunk.length / 2);
-        const dataView = new DataView(chunk.buffer);
+      */
+     addPCM16(chunk) {
+        // 添加移动端兼容性日志
+        console.log('添加PCM16数据:', chunk.length, '字节');
+        
+        // 确保 chunk 是有效的 Uint8Array
+        if (!(chunk instanceof Uint8Array)) {
+            console.error('无效的音频数据格式:', chunk.constructor.name);
+            return;
+        }
+         const float32Array = new Float32Array(chunk.length / 2);
+         const dataView = new DataView(chunk.buffer);
 
         for (let i = 0; i < chunk.length / 2; i++) {
             try {
@@ -117,9 +125,17 @@ export class AudioStreamer {
     /**
      * @method scheduleNextBuffer
      * @description Schedules the next audio buffer for playback.
-     */
-    scheduleNextBuffer() {
-        const SCHEDULE_AHEAD_TIME = 0.2;
+      */
+     scheduleNextBuffer() {
+        // 添加移动端兼容性日志
+        console.log('调度下一个音频缓冲区，队列长度:', this.audioQueue.length);
+        
+        // 确保音频上下文可用
+        if (!this.context || this.context.state === 'closed') {
+            console.error('音频上下文不可用或已关闭');
+            return;
+        }
+         const SCHEDULE_AHEAD_TIME = 0.2;
 
         while (this.audioQueue.length > 0 && this.scheduledTime < this.context.currentTime + SCHEDULE_AHEAD_TIME) {
             const audioData = this.audioQueue.shift();

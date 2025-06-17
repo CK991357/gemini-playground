@@ -277,16 +277,26 @@ function updateMicIcon() {
  */
 async function ensureAudioInitialized() {
     if (!audioCtx) {
-        const AudioContext = globalThis.AudioContext || globalThis.webkitAudioContext; // 兼容性创建方式
+        const AudioContext = globalThis.AudioContext || globalThis.webkitAudioContext;
         audioCtx = new AudioContext();
+        
+        // 确保在用户交互后恢复音频上下文
+        if (audioCtx.state === 'suspended') {
+            const resumeHandler = async () => {
+                await audioCtx.resume();
+                document.removeEventListener('click', resumeHandler);
+                document.removeEventListener('touchstart', resumeHandler);
+            };
+            
+            document.addEventListener('click', resumeHandler);
+            document.addEventListener('touchstart', resumeHandler);
+        }
     }
+    
     if (!audioStreamer) {
         audioStreamer = new AudioStreamer(audioCtx);
-        // 移除音频输出可视化，因为音频模式已删除
-        // await audioStreamer.addWorklet('vumeter-out', 'js/audio/worklets/vol-meter.js', (ev) => {
-        //     updateAudioVisualizer(ev.data.volume);
-        // });
     }
+    
     return audioStreamer;
 }
 
@@ -405,14 +415,17 @@ async function connectToWebsocket() {
         generationConfig: {
             responseModalities: responseTypeSelect.value,
             speechConfig: {
-                voiceConfig: { 
-                    prebuiltVoiceConfig: { 
-                        voiceName: voiceSelect.value    // You can change voice in the config.js file
+                voiceConfig: {
+                    prebuiltVoiceConfig: {
+                        voiceName: voiceSelect.value
                     }
-                }
-            },
-
+                },
+                // 确保音频格式正确
+                audioEncoding: "LINEAR_PCM",
+                sampleRateHertz: 16000
+            }
         },
+
         systemInstruction: {
             parts: [{
                 text: systemInstructionInput.value     // You can change system instruction in the config.js file
@@ -528,11 +541,23 @@ client.on('close', (event) => {
 
 client.on('audio', async (data) => {
     try {
+        logMessage(`收到音频数据: ${data.byteLength} 字节`, 'system');
         await resumeAudioContext();
         const streamer = await ensureAudioInitialized();
-        streamer.addPCM16(new Uint8Array(data));
+        
+        // 确保音频上下文已恢复
+        if (audioCtx.state === 'suspended') {
+            logMessage('音频上下文暂停，尝试恢复...', 'system');
+            await audioCtx.resume();
+        }
+        
+        // 添加延迟以确保上下文完全恢复
+        setTimeout(() => {
+            streamer.addPCM16(new Uint8Array(data));
+            logMessage('音频数据已添加到播放队列', 'system');
+        }, 100);
     } catch (error) {
-        logMessage(`Error processing audio: ${error.message}`, 'system');
+        logMessage(`处理音频时出错: ${error.message}`, 'system');
     }
 });
 
@@ -936,6 +961,35 @@ function initMobileHandlers() {
             logMessage('摄像头未激活，无法翻转', 'system');
         }
     });
+    
+    /**
+     * 检查音频播放状态。
+     */
+    function checkAudioPlayback() {
+        if (audioStreamer && audioStreamer.isPlaying) {
+            logMessage('音频正在播放中...', 'system');
+        } else {
+            logMessage('音频未播放', 'system');
+        }
+    }
+    
+    // 在连接成功后添加检查
+    client.on('setupcomplete', () => {
+        logMessage('Setup complete', 'system');
+        setTimeout(checkAudioPlayback, 1000); // 1秒后检查音频状态
+    });
+    
+    /**
+     * 添加权限检查。
+     */
+    async function checkAudioPermissions() {
+        try {
+            const permission = await navigator.permissions.query({ name: 'speaker' });
+            logMessage(`扬声器权限状态: ${permission.state}`, 'system');
+        } catch (error) {
+            logMessage(`扬声器权限检查失败: ${error.message}`, 'system');
+        }
+    }
 }
 
 // 在 DOMContentLoaded 中调用
