@@ -404,12 +404,6 @@ async function connectToWebsocket() {
     localStorage.setItem('gemini_voice', voiceSelect.value);
     localStorage.setItem('system_instruction', systemInstructionInput.value);
 
-    if (isMobileDevice()) {
-        // 移动端默认使用较低FPS
-        fpsInput.value = 5; // 或者根据实际测试效果调整
-        logMessage('移动端已自动调整视频FPS为5', 'system');
-    }
-
     const config = {
         model: CONFIG.API.MODEL_NAME,
         generationConfig: {
@@ -419,10 +413,7 @@ async function connectToWebsocket() {
                     prebuiltVoiceConfig: {
                         voiceName: voiceSelect.value
                     }
-                },
-                // 确保音频格式正确
-                audioEncoding: "LINEAR_PCM",
-                sampleRateHertz: 16000
+                }
             }
         },
 
@@ -541,21 +532,9 @@ client.on('close', (event) => {
 
 client.on('audio', async (data) => {
     try {
-        logMessage(`收到音频数据: ${data.byteLength} 字节`, 'system');
         await resumeAudioContext();
         const streamer = await ensureAudioInitialized();
-        
-        // 确保音频上下文已恢复
-        if (audioCtx.state === 'suspended') {
-            logMessage('音频上下文暂停，尝试恢复...', 'system');
-            await audioCtx.resume();
-        }
-        
-        // 添加延迟以确保上下文完全恢复
-        setTimeout(() => {
-            streamer.addPCM16(new Uint8Array(data));
-            logMessage('音频数据已添加到播放队列', 'system');
-        }, 100);
+        streamer.addPCM16(new Uint8Array(data));
     } catch (error) {
         logMessage(`处理音频时出错: ${error.message}`, 'system');
     }
