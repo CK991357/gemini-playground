@@ -1,6 +1,6 @@
+import { ApplicationError, ErrorCodes } from '../utils/error-boundary.js';
 import { Logger } from '../utils/logger.js';
 import { VideoRecorder } from './video-recorder.js';
-import { ApplicationError, ErrorCodes } from '../utils/error-boundary.js';
 
 /**
  * @fileoverview Manages video capture and processing with motion detection and frame preview.
@@ -197,8 +197,8 @@ export class VideoManager {
             this.lastFrameTime = Date.now();
             this.frameCount++;
 
-            const size = Math.round(base64Data.length / 1024);
-            //Logger.debug(`Processing frame (${size}KB) - frame #${this.frameCount}`);
+            // const size = Math.round(base64Data.length / 1024); // 移除未使用的变量
+            // Logger.debug(`Processing frame (${size}KB) - frame #${this.frameCount}`);
 
             onFrame({
                 mimeType: "image/jpeg",

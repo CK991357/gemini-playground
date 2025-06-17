@@ -1,5 +1,5 @@
-import { Logger } from '../utils/logger.js';
 import { ApplicationError, ErrorCodes } from '../utils/error-boundary.js';
+import { Logger } from '../utils/logger.js';
 
 /**
  * @fileoverview Implements a video recorder for capturing and processing video frames from a camera.
@@ -218,7 +218,7 @@ export class VideoRecorder {
      * @returns {string} Optimized base64 encoded frame data.
      * @private
      */
-    async optimizeFrameQuality(base64Data) {
+    optimizeFrameQuality(base64Data) {
         let quality = this.options.quality;
         let currentSize = base64Data.length;
         

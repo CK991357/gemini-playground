@@ -20,7 +20,7 @@ export const registeredWorklets = new Map();
  * @param {Function} workletSrc - The source code of the worklet, typically a function.
  * @returns {string} The URL of the created worklet.
  */
-export function createWorketFromSrc(workletName, workletSrc) {
+export function createWorketFromSrc(_workletName, workletSrc) {
     const script = new Blob([`(${workletSrc.toString()})()`], { type: 'application/javascript' });
     return URL.createObjectURL(script);
 } 

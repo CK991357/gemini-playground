@@ -39,6 +39,16 @@ body {
     overflow: hidden; /* 防止滚动条 */
 }
 
+/* 添加 iOS 安全区域适配 */
+@supports (padding: max(0px)) {
+    body {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+    }
+}
+
 .app-container {
     display: flex;
     flex-direction: column;
@@ -293,13 +303,34 @@ body {
 /* 媒体预览容器优化 */
 .media-previews {
   position: absolute;
-  bottom: 80px; /* 在输入框上方 */
+  bottom: calc(80px + env(safe-area-inset-bottom)); /* 在输入框上方，并考虑安全区域 */
   right: 10px;
   z-index: 100;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 10px;
+}
+
+/* 优化移动端输入区域和媒体预览位置 */
+@media (max-width: 768px) {
+    .input-area {
+        /* 确保输入区域在底部，并考虑安全区域 */
+        padding-bottom: calc(15px + env(safe-area-inset-bottom)); /* 15px 是原有 padding-top */
+    }
+    
+    .media-previews {
+        /* 调整媒体预览位置，使其在输入区域上方 */
+        bottom: calc(80px + env(safe-area-inset-bottom)); /* 80px 是输入区域大致高度 */
+        right: 10px; /* 调整右侧间距 */
+        left: 10px; /* 居中显示或根据需要调整 */
+        align-items: center; /* 居中预览窗口 */
+    }
+
+    .media-preview {
+        width: 120px; /* 缩小预览窗口 */
+        height: 90px;
+    }
 }
 
 .media-preview {
@@ -450,6 +481,8 @@ body {
     font-size: 20px;
     transition: all 0.3s ease;
     color: var(--text-secondary-color); /* 默认颜色 */
+    min-width: 44px; /* 确保按钮有足够的点击区域 */
+    min-height: 44px;
 }
 
 .media-button:hover, .media-button.active {
@@ -751,4 +784,24 @@ body {
     position: absolute;
     bottom: 5px;
     right: 5px;
+}
+
+/* 针对 iOS 的优化 */
+@supports (-webkit-overflow-scrolling: touch) {
+    .message-history {
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    input, button, textarea {
+        -webkit-appearance: none;
+        appearance: none; /* 添加标准属性 */
+        border-radius: 0;
+    }
+}
+
+/* 在桌面端隐藏移动端连接按钮 */
+@media (min-width: 769px) { /* 使用 769px 以避免与 max-width: 768px 冲突 */
+    #mobile-connect {
+        display: none;
+    }
 }

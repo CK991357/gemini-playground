@@ -1,5 +1,5 @@
-import { registeredWorklets } from '../core/worklet-registry.js';
 import { CONFIG } from '../config/config.js';
+import { registeredWorklets } from '../core/worklet-registry.js';
 
 /**
  * @class AudioStreamer
@@ -145,7 +145,7 @@ export class AudioStreamer {
             const worklets = registeredWorklets.get(this.context);
 
             if (worklets) {
-                Object.entries(worklets).forEach(([workletName, graph]) => {
+                Object.entries(worklets).forEach(([_workletName, graph]) => {
                     const { node, handlers } = graph;
                     if (node) {
                         source.connect(node);
@@ -174,7 +174,7 @@ export class AudioStreamer {
                 }
             } else {
                 if (!this.checkInterval) {
-                    this.checkInterval = window.setInterval(() => {
+                    this.checkInterval = globalThis.setInterval(() => {
                         if (this.audioQueue.length > 0 || this.processingBuffer.length >= this.bufferSize) {
                             this.scheduleNextBuffer();
                         }
